@@ -1,0 +1,133 @@
+# RDKit feature definitions
+
+# aromatic
+DefineFeature ar6 a1aaaaa1
+  Family a
+  Weights 1,1,1,1,1,1
+EndFeature
+DefineFeature ar5 a1aaaa1
+  Family a
+  Weights 1,1,1,1,1
+EndFeature
+
+# HBD
+DefineFeature N_HBD [#7!H0&!$(N-[SX4](=O)(=O)[CX4](F)(F)F)]
+  Family D
+  Weights 1
+EndFeature
+DefineFeature O_HBD [#8!H0&!$([OH][C,S,P]=O)]
+  Family D
+  Weights 1
+EndFeature
+DefineFeature S_HBD [#16!H0]
+  Family D
+  Weights 1
+EndFeature
+
+# HBA
+DefineFeature N_HBA [#7&!$([nX3])&!$([NX3]-*=[!#6])&!$([NX3]-[a])&!$([NX4])&!$(N=C([C,N])N)]
+  Family A
+  Weights 1
+EndFeature
+DefineFeature O_HBA [$([O])&!$([OX2](C)C=O)&!$(*(~a)~a)]
+  Family A
+  Weights 1
+EndFeature
+
+# positive
+DefineFeature N_positive [$([NX3]([CX4])([CX4,#1])[CX4,#1])&!$([NX3]-*=[!#6])]
+  Family P
+  Weights 1
+EndFeature
+DefineFeature amidino_positive [$([CX3](=N)(-N)[!N])](=N)-N
+  Family P
+  Weights 1,1,1
+EndFeature
+DefineFeature guanidino_positive N=[CX3](N)-N
+  Family P
+  Weights 1,1,1,1
+EndFeature
+DefineFeature charged_positive [$([+,+2,+3])&!$(*[-,-2,-3])]
+  Family P
+  Weights 1
+EndFeature
+
+# negative
+DefineFeature tetrazole_negative c1nn[nH1]n1
+  Family N
+  Weights 1,1,1,1,1
+EndFeature
+DefineFeature SP_v4_negative [$([SX4,PX4](=O)(=O)[O-,OH])](=O)(=O)[O-,OH]
+  Family N
+  Weights 1,1,1,1
+EndFeature
+DefineFeature CSP_v3_negative [$([CX3,SX3,PX3](=O)[O-,OH])](=O)[O-,OH]
+  Family N
+  Weights 1,1,1
+EndFeature
+DefineFeature charged_negative [$([-,-2,-3])&!$(*[+,+2,+3])]
+  Family N
+  Weights 1
+EndFeature
+
+# hydrophobic
+DefineFeature ar6_hyd a1aaaaa1
+  Family H
+  Weights 1,1,1,1,1,1
+EndFeature
+DefineFeature ar5_hyd a1aaaa1
+  Family H
+  Weights 1,1,1,1,1
+EndFeature
+DefineFeature hyd_1 [$([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])&!$(**[CH3X4,CH2X3,CH1X2,F,Cl,Br,I])]
+  Family H
+  Weights 1
+EndFeature
+DefineFeature hyd_1 [$(*([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])[CH3X4,CH2X3,CH1X2,F,Cl,Br,I])&!$(*([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])[CH3X4,CH2X3,CH1X2,F,Cl,Br,I])]([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])[CH3X4,CH2X3,CH1X2,F,Cl,Br,I]
+  Family H
+  Weights 1,1,1
+EndFeature
+DefineFeature hyd_2 *([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])[CH3X4,CH2X3,CH1X2,F,Cl,Br,I]
+  Family H
+  Weights 1,1,1,1
+EndFeature
+DefineFeature r3_hyd [C&r3]1~[C&r3]~[C&r3]1
+  Family H
+  Weights 1,1,1
+EndFeature
+DefineFeature r4_hyd [C&r4]1~[C&r4]~[C&r4]~[C&r4]1
+  Family H
+  Weights 1,1,1,1
+EndFeature
+DefineFeature r5_hyd [C&r5]1~[C&r5]~[C&r5]~[C&r5]~[C&r5]1
+  Family H
+  Weights 1,1,1,1,1
+EndFeature
+DefineFeature r6_hyd [C&r6]1~[C&r6]~[C&r6]~[C&r6]~[C&r6]~[C&r6]1
+  Family H
+  Weights 1,1,1,1,1,1
+EndFeature
+DefineFeature r7_hyd [C&r7]1~[C&r7]~[C&r7]~[C&r7]~[C&r7]~[C&r7]~[C&r7]1
+  Family H
+  Weights 1,1,1,1,1,1,1
+EndFeature
+DefineFeature r8_hyd [C&r8]1~[C&r8]~[C&r8]~[C&r8]~[C&r8]~[C&r8]~[C&r8]~[C&r8]1
+  Family H
+  Weights 1,1,1,1,1,1,1,1
+EndFeature
+DefineFeature hyd_3 [CH2X4,CH1X3,CH0X2]~[CH3X4,CH2X3,CH1X2,F,Cl,Br,I]
+  Family H
+  Weights 1,1
+EndFeature
+DefineFeature hyd_4 [$([CH2X4,CH1X3,CH0X2]~[$([!#1]);!$([CH2X4,CH1X3,CH0X2])])]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]
+  Family H
+  Weights 1,1,1
+EndFeature
+DefineFeature hyd_5 [$([CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]~[$([CH2X4,CH1X3,CH0X2]~[$([!#1]);!$([CH2X4,CH1X3,CH0X2])])])]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]
+  Family H
+  Weights 1,1,1,1
+EndFeature
+DefineFeature S_hyd [$([S]~[#6])&!$(S~[!#6])]
+  Family H
+  Weights 1
+EndFeature

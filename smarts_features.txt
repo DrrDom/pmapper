@@ -1,0 +1,66 @@
+# lines started from # are comments
+#
+# each line is SMARTS and feature label
+#
+# legend of feature labels:
+# a - aromatic
+# A - H-bond acceptor
+# D - H-bond donor
+# H - hydrophobic
+# P - positive
+# N - negative
+
+# aromatic
+a1aaaaa1 a
+a1aaaa1 a
+
+# HBD
+[#7!H0&!$(N-[SX4](=O)(=O)[CX4](F)(F)F)] D
+[#8!H0&!$([OH][C,S,P]=O)] D
+[#16!H0] D
+
+# HBA
+[#7&!$([nX3])&!$([NX3]-*=[!#6])&!$([NX3]-[a])&!$([NX4])&!$(N=C([C,N])N)] A
+[$([O])&!$([OX2](C)C=O)&!$(*(~a)~a)] A
+
+# positive
+# [+,+2,+3,+4] P
+# [$(CC)](=[N+0])[N+0] P
+# [$(C(N+0)(N+0)=[N+0])] P
+# [$([n+0]1cc[nH]c1)] P
+# [$(C(=N)N)&!$(C(=N)(N)N)](=N)N P
+[$([NX3]([CX4])([CX4,#1])[CX4,#1])&!$([NX3]-*=[!#6])] P
+[$([CX3](=N)(-N)[!N])](=N)-N P
+N=[CX3](N)-N P
+[$([+,+2,+3])&!$(*[-,-2,-3])] P
+
+# negative
+# [-,-2,-3,-4] N
+# C(=O)[O-,OH,OX1] N
+# [$([S,P](=O)[O-,OH,OX1])] N
+# c1[nH1]nnn1 N
+c1nn[nH1]n1 N
+# C(=O)N[OH1,O-,OX1] N
+# C(=O)N[OH1,O-] N
+# CO(=N[OH1,O-]) N
+# [$([NH]-[SX4](=O)(=O)[CX4](F)(F)F)] N
+[$([SX4,PX4](=O)(=O)[O-,OH])](=O)(=O)[O-,OH] N
+[$([CX3,SX3,PX3](=O)[O-,OH])](=O)[O-,OH] N
+[$([-,-2,-3])&!$(*[+,+2,+3])] N
+
+# hydrophobic
+a1aaaaa1 H
+a1aaaa1 H
+[$([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])&!$(**[CH3X4,CH2X3,CH1X2,F,Cl,Br,I])] H
+[$(*([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])[CH3X4,CH2X3,CH1X2,F,Cl,Br,I])&!$(*([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])[CH3X4,CH2X3,CH1X2,F,Cl,Br,I])]([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])[CH3X4,CH2X3,CH1X2,F,Cl,Br,I] H
+*([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])([CH3X4,CH2X3,CH1X2,F,Cl,Br,I])[CH3X4,CH2X3,CH1X2,F,Cl,Br,I] H
+[C&r3]1~[C&r3]~[C&r3]1 H
+[C&r4]1~[C&r4]~[C&r4]~[C&r4]1 H
+[C&r5]1~[C&r5]~[C&r5]~[C&r5]~[C&r5]1 H
+[C&r6]1~[C&r6]~[C&r6]~[C&r6]~[C&r6]~[C&r6]1 H
+[C&r7]1~[C&r7]~[C&r7]~[C&r7]~[C&r7]~[C&r7]~[C&r7]1 H
+[C&r8]1~[C&r8]~[C&r8]~[C&r8]~[C&r8]~[C&r8]~[C&r8]~[C&r8]1 H
+[CH2X4,CH1X3,CH0X2]~[CH3X4,CH2X3,CH1X2,F,Cl,Br,I] H
+[$([CH2X4,CH1X3,CH0X2]~[$([!#1]);!$([CH2X4,CH1X3,CH0X2])])]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2] H
+[$([CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]~[$([CH2X4,CH1X3,CH0X2]~[$([!#1]);!$([CH2X4,CH1X3,CH0X2])])])]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2] H
+[$([S]~[#6])&!$(S~[!#6])] H
