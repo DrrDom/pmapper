@@ -60,10 +60,17 @@ class Pharmacophore():
         self.__g = nx.Graph()
         self.__bin_step = bin_step
 
+    @staticmethod
+    def __remove_dupl(ls):
+        # remove duplicates preserving the order of items
+        seen = set()
+        seen_add = seen.add
+        return [x for x in ls if not (x in seen or seen_add(x))]
+
     def load_from_feature_coords(self, feature_coords):
         # feature_coords: [('A', (1.23, 2.34, 3.45)), ('A', (4.56, 5.67, 6.78)), ...]
         # remove full duplicates from features
-        feature_coords = sorted(set(feature_coords))
+        feature_coords = self.__remove_dupl(feature_coords)
         self.__g.clear()
         for i, (label, coords) in enumerate(feature_coords):
             self.__g.add_node(i, label=label, xyz=coords)
