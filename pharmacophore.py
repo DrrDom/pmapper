@@ -59,6 +59,7 @@ class Pharmacophore():
     def __init__(self, bin_step=2):
         self.__g = nx.Graph()
         self.__bin_step = bin_step
+        self.__nx_version = int(nx.__version__.split('.')[0])
 
     @staticmethod
     def __remove_dupl(ls):
@@ -77,8 +78,12 @@ class Pharmacophore():
         self.__update_dists()
 
     def __update_dists(self):
-        for i, j in combinations(self.__g.nodes(), 2):
-            self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz']))
+        if self.__nx_version == 2:
+            for i, j in combinations(self.__g.nodes(), 2):
+                self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz']))
+        else:
+            for i, j in combinations(self.__g.nodes(), 2):
+                self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz']))
 
     def __dist(self, coord1, coord2, bin_step=None):
         # coord1, coord2 - tuples of (x, y, z)
@@ -109,7 +114,10 @@ class Pharmacophore():
             sign = []
             for num_j, j in enumerate(ids):
                 if i != j:
-                    sign.append((feature_labels[num_j], self.__g.edge[i][j]['dist']))
+                    if self.__nx_version == 2:
+                        sign.append((feature_labels[num_j], self.__g.edges[i, j]['dist']))
+                    else:
+                        sign.append((feature_labels[num_j], self.__g.edge[i][j]['dist']))
             feature_signatures.append((feature_labels[num_i],) + tuple(sorted(sign)))
         return tuple(feature_signatures)
 
@@ -147,7 +155,10 @@ class Pharmacophore():
                 # if all points are different sign can be determined by the first four points which are not in one plane
                 stereo = 0
                 for comb in combinations(ids, 4):
-                    s = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in comb), tol=tol)
+                    if self.__nx_version == 2:
+                        s = self.__get_stereo_sign(coord=tuple(self.__g.nodes[i]['xyz'] for i in comb), tol=tol)
+                    else:
+                        s = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in comb), tol=tol)
                     if s != 0:
                         stereo = s
                         break
@@ -206,22 +217,43 @@ class Pharmacophore():
 
             names, ids = self.__sort_two_lists(feature_names, feature_ids)
 
-            if len(c) == len(names):   # system ABCD
-                stereo = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+            if self.__nx_version == 2:
 
-            else:   # system AABB
+                if len(c) == len(names):  # system ABCD
+                    stereo = self.__get_stereo_sign(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
 
-                # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
-                if (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[0]][ids[3]]['dist'] and
-                    self.__g.edge[ids[1]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[3]]['dist']) or \
-                   (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[2]]['dist'] and
-                    self.__g.edge[ids[0]][ids[3]]['dist'] - self.__g.edge[ids[1]][ids[3]]['dist']):
-                    stereo = 0
-                else: # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
-                    if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
-                        ids[2], ids[3] = ids[3], ids[2]
-                        names[2], names[3] = names[3], names[2]
+                else:  # system AABB
+
+                    # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
+                    if (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[0], ids[3]]['dist'] and
+                                self.__g.edges[ids[1], ids[2]]['dist'] == self.__g.edges[ids[1], ids[3]]['dist']) or \
+                            (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[1], ids[2]]['dist'] and
+                                     self.__g.edges[ids[0], ids[3]]['dist'] - self.__g.edges[ids[1], ids[3]]['dist']):
+                        stereo = 0
+                    else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
+                        if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
+                            ids[2], ids[3] = ids[3], ids[2]
+                            names[2], names[3] = names[3], names[2]
+                        stereo = self.__get_stereo_sign(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
+
+            else:
+
+                if len(c) == len(names):   # system ABCD
                     stereo = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+
+                else:   # system AABB
+
+                    # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
+                    if (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[0]][ids[3]]['dist'] and
+                        self.__g.edge[ids[1]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[3]]['dist']) or \
+                       (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[2]]['dist'] and
+                        self.__g.edge[ids[0]][ids[3]]['dist'] - self.__g.edge[ids[1]][ids[3]]['dist']):
+                        stereo = 0
+                    else: # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
+                        if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
+                            ids[2], ids[3] = ids[3], ids[2]
+                            names[2], names[3] = names[3], names[2]
+                        stereo = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
 
         return tuple(sorted(feature_names)), stereo
 
