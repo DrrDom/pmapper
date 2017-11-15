@@ -171,8 +171,10 @@ class Pharmacophore():
         # for chiral objects the stereo is defined by the first non-zero simplex (simplexes are sorted by priority)
         d = defaultdict(int)
         for comb in combinations(range(len(ids)), 4):
-            name, stereo = self.__gen_canon_simplex_name(tuple(ids[i] for i in comb),
-                                                         tuple(canon_names[i] for i in comb),
+            simplex_ids = tuple(ids[i] for i in comb)
+            name, stereo = self.__gen_canon_simplex_name(simplex_ids,
+                                                         self.__get_canon_feature_signatures(simplex_ids,
+                                                                                             tuple(canon_names[i] for i in comb)),
                                                          tol)
             d[name] += stereo
 
