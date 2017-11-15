@@ -152,19 +152,15 @@ class Pharmacophore():
                         stereo = s
                         break
             else:
-                stereo = self.__calc_full_stereo(ids, canon_names, tol)
+                stereo = self.__calc_full_stereo(ids, tol)
 
         else:
             stereo = 0
 
         return stereo
 
-    def __calc_full_stereo(self, ids, canon_names, tol=0.0001):
+    def __calc_full_stereo(self, ids, tol=0.0001):
         # input features and ids are already sorted by feature names (canon_names)
-
-        # simplify canon_names by simple replacement to obtain shorter signatures
-        n = sorted(set(canon_names))
-        canon_names = tuple('X%i_' % n.index(name) for name in canon_names)
 
         # sum stereo of individual simplexes
         # achiral objects should have all 0 (right and left simplexes should compensate each other)
@@ -173,8 +169,7 @@ class Pharmacophore():
         for comb in combinations(range(len(ids)), 4):
             simplex_ids = tuple(ids[i] for i in comb)
             name, stereo = self.__gen_canon_simplex_name(simplex_ids,
-                                                         self.__get_canon_feature_signatures(simplex_ids,
-                                                                                             tuple(canon_names[i] for i in comb)),
+                                                         self.__get_canon_feature_signatures(simplex_ids),
                                                          tol)
             d[name] += stereo
 
