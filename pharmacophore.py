@@ -40,7 +40,7 @@ def load_multi_conf_mol(mol, smarts_features, factory=None, bin_step=2):
     if smarts_features is not None and factory is not None:
         raise Exception("Only one options should be not None (smarts_features or factory)")
     output = []
-    p = Pharmacophore2(bin_step)
+    p = Pharmacophore(bin_step)
     if smarts_features is not None:
         ids = p._get_features_atom_ids(mol, smarts_features)
     elif factory is not None:
@@ -48,13 +48,13 @@ def load_multi_conf_mol(mol, smarts_features, factory=None, bin_step=2):
     else:
         return output
     for conf in mol.GetConformers():
-        p = Pharmacophore2(bin_step)
+        p = Pharmacophore(bin_step)
         p.load_from_atom_ids(mol, ids, conf.GetId())
         output.append(p)
     return output
 
 
-class Pharmacophore():
+class PharmacophoreBase():
 
     def __init__(self, bin_step=2):
         self.__g = nx.Graph()
@@ -318,7 +318,8 @@ class Pharmacophore():
                     yield self.__get_signature_md5(ids=comb).hexdigest(), \
                           self._get_stereo(ids=comb, tol=tol)
 
-class PharmacophoreMatch(Pharmacophore):
+
+class PharmacophoreMatch(PharmacophoreBase):
 
     def __init__(self, bin_step=2):
         super().__init__(bin_step=bin_step)
@@ -381,7 +382,7 @@ class PharmacophoreMatch(Pharmacophore):
         return None
 
 
-class Pharmacophore2(PharmacophoreMatch):
+class Pharmacophore(PharmacophoreMatch):
 
     def __init__(self, bin_step=2):
         super().__init__(bin_step=bin_step)
@@ -427,7 +428,7 @@ class Pharmacophore2(PharmacophoreMatch):
                 output[name].append(f.GetAtomIds())
             else:
                 output[name] = [f.GetAtomIds()]
-        output = {k: Pharmacophore2.__filter_features(v) for k, v in output.items()}
+        output = {k: Pharmacophore.__filter_features(v) for k, v in output.items()}
         return output
 
     @staticmethod
@@ -459,7 +460,7 @@ class Pharmacophore2(PharmacophoreMatch):
                     tmp.extend(ids)
             # exclude features if their atom ids is full subset of another feature of the same type
             if tmp:
-                res = Pharmacophore2.__filter_features(tmp)
+                res = Pharmacophore.__filter_features(tmp)
                 output[name] = tuple(res)  # tuple of tuples with atom ids
             else:
                 output[name] = tuple(tmp)  # empty set of ids
