@@ -304,14 +304,19 @@ class Pharmacophore():
             self.__bin_step = bin_step
             self.__update_dists()
 
-    def iterate_pharm(self, min_features=1, max_features=None, tol=0):
+    def iterate_pharm(self, min_features=1, max_features=None, tol=0, return_feature_ids=True):
         ids = self._get_ids()
         if max_features is None:
             max_features = len(self.__g.nodes())
         for n in range(min_features, max_features + 1):
             for comb in combinations(ids, n):
-                yield self._get_stereo(ids=comb, tol=tol), self.__get_signature_md5(ids=comb).hexdigest(), comb
-
+                if return_feature_ids:
+                    yield self.__get_signature_md5(ids=comb).hexdigest(), \
+                          self._get_stereo(ids=comb, tol=tol), \
+                          comb
+                else:
+                    yield self.__get_signature_md5(ids=comb).hexdigest(), \
+                          self._get_stereo(ids=comb, tol=tol)
 
 class PharmacophoreMatch(Pharmacophore):
 
