@@ -144,7 +144,7 @@ class Pharmacophore():
         s = self.__get_signature(ids=ids)
         return md5(pickle.dumps(repr(s)))
 
-    def _get_stereo(self, ids=None, tol=0.0001):
+    def _get_stereo(self, ids=None, tol=0):
         ids = self._get_ids(ids)
         if len(ids) > 3:
             # sort to get sorted ids
@@ -170,7 +170,7 @@ class Pharmacophore():
 
         return stereo
 
-    def __calc_full_stereo(self, ids, tol=0.0001):
+    def __calc_full_stereo(self, ids, tol=0):
         # input features and ids are already sorted by feature names (canon_names)
 
         # sum stereo of individual simplexes
@@ -194,7 +194,7 @@ class Pharmacophore():
                 break
         return stereo
 
-    def __gen_canon_simplex_name(self, feature_ids, feature_names, tol=0.0001):
+    def __gen_canon_simplex_name(self, feature_ids, feature_names, tol=0):
         # return canon simplex signature and stereo
 
         c = Counter(feature_names)
@@ -254,7 +254,7 @@ class Pharmacophore():
         return map(list, zip(*paired_sorted))  # two lists
 
     @staticmethod
-    def __get_stereo_sign(coord, tol=0.0001):
+    def __get_stereo_sign(coord, tol=0):
         # coord - tuple of tuples containing coordinates of four points in a specific order
         # ((x1, y1, z1), (x2, y2, z2), (x3, y3, z3), (x4, y4, z4))
         # triple product is calculated for 1-2, 1-3 and 1-4 vectors
@@ -293,7 +293,7 @@ class Pharmacophore():
     def get_signature_md5bin(self):
         return self.__get_signature_md5().digest()
 
-    def get_stereo(self, tol=0.0001):
+    def get_stereo(self, tol=0):
         return self._get_stereo(tol=tol)
 
     def get_feature_coords(self):
@@ -304,13 +304,13 @@ class Pharmacophore():
             self.__bin_step = bin_step
             self.__update_dists()
 
-    def iterate_pharm(self, min_features=1, max_features=None):
+    def iterate_pharm(self, min_features=1, max_features=None, tol=0):
         ids = self._get_ids()
         if max_features is None:
             max_features = len(self.__g.nodes())
         for n in range(min_features, max_features + 1):
             for comb in combinations(ids, n):
-                yield self._get_stereo(ids=comb), self.__get_signature_md5(ids=comb).hexdigest(), comb
+                yield self._get_stereo(ids=comb, tol=tol), self.__get_signature_md5(ids=comb).hexdigest(), comb
 
 
 class PharmacophoreMatch(Pharmacophore):
