@@ -197,13 +197,6 @@ class Pharmacophore():
     def __gen_canon_simplex_name(self, feature_ids, feature_names, tol=0.0001):
         # return canon simplex signature and stereo
 
-        # create new names to distinguish priority of single features in simplex
-        # names = self.__get_canon_feature_signatures(feature_ids, feature_names)
-        # c = Counter(names)
-
-        # single feature priority cannot be changed after running the code above
-        # because if symmetry classes was defined for all features, considering subset of features
-        # will not change symmetry classes
         c = Counter(feature_names)
 
         # system AAAA or AAAB or AABC is achiral
@@ -223,9 +216,9 @@ class Pharmacophore():
 
                     # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
                     if (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[0], ids[3]]['dist'] and
-                                self.__g.edges[ids[1], ids[2]]['dist'] == self.__g.edges[ids[1], ids[3]]['dist']) or \
-                            (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[1], ids[2]]['dist'] and
-                                     self.__g.edges[ids[0], ids[3]]['dist'] - self.__g.edges[ids[1], ids[3]]['dist']):
+                        self.__g.edges[ids[1], ids[2]]['dist'] == self.__g.edges[ids[1], ids[3]]['dist']) or \
+                       (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[1], ids[2]]['dist'] and
+                        self.__g.edges[ids[0], ids[3]]['dist'] - self.__g.edges[ids[1], ids[3]]['dist']):
                         stereo = 0
                     else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
                         if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
