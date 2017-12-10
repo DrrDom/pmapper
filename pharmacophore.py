@@ -337,17 +337,15 @@ class PharmacophoreMatch(PharmacophoreBase):
         self.__nm = iso.categorical_node_match('label', '_')
         self.__em = iso.numerical_edge_match('dist', 0)
 
-    def __fit_graph(self, g, mapping=False):
+    def __fit_graph(self, g):
+        # return generator over mapping
         if self.get_bin_step() != 0:
-            gm = iso.GraphMatcher(self._Pharmacophore__g, g, node_match=self.__nm, edge_match=self.__em)
+            gm = iso.GraphMatcher(self._PharmacophoreBase__g, g, node_match=self.__nm, edge_match=self.__em)
         else:
-            gm = iso.GraphMatcher(self._Pharmacophore__g, g, node_match=self.__nm, edge_match=iso.numerical_edge_match('dist', 0, atol=0.75))
-        if not mapping:
-            return gm.subgraph_is_isomorphic()
-        else:
-            return gm.subgraph_is_isomorphic(), gm.mapping
+            gm = iso.GraphMatcher(self._PharmacophoreBase__g, g, node_match=self.__nm, edge_match=iso.numerical_edge_match('dist', 0, atol=0.75))
+        return gm.subgraph_isomorphisms_iter()
 
-    def fit_model(self, target, n_omitted=1, essential_features=None):
+    def fit_model(self, target, n_omitted=0, essential_features=None, tol=0):
         """
         target is a target pharmacophore model which is used for matching (it should be a subgraph of the current
             pharmacophore graph).
@@ -371,14 +369,17 @@ class PharmacophoreMatch(PharmacophoreBase):
         else:
             optional_features = ids
 
-        if self.__fit_graph(target.get_graph().subgraph(ids)):
-            return tuple(ids)
-
-        for n in range(1, n_omitted + 1):
-            for i in combinations(optional_features, n):
-                res, mapping = self.__fit_graph(target.get_graph().subgraph(ids.difference(i)), mapping=True)
-                if res and self._get_stereo(ids=tuple(mapping.keys())) == target._get_stereo(ids=tuple(ids.difference(i))):
-                    return tuple(ids.difference(i))
+        if not n_omitted:
+            target_stereo = target.get_stereo(tol=tol)
+            for mapping in self.__fit_graph(target.get_graph().subgraph(ids)):
+                if self._get_stereo(ids=tuple(mapping.keys())) == target_stereo:
+                    return tuple(mapping.keys())
+        else:
+            for n in range(1, n_omitted + 1):
+                for i in combinations(optional_features, n):
+                    for mapping in self.__fit_graph(target.get_graph().subgraph(ids.difference(i))):
+                        if self._get_stereo(ids=tuple(mapping.keys())) == target._get_stereo(ids=tuple(ids.difference(i))):
+                            return tuple(ids.difference(i))
         return None
 
 
