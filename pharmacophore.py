@@ -10,6 +10,7 @@
 import networkx as nx
 import pickle
 import json
+import numpy as np
 
 from rdkit import Chem
 from collections import Counter, defaultdict
@@ -17,6 +18,7 @@ from itertools import combinations
 from hashlib import md5
 from xml.dom import minidom
 from networkx.algorithms import isomorphism as iso
+from math import sqrt, asin, pi
 
 
 def read_smarts_feature_file(file_name):
@@ -259,20 +261,47 @@ class PharmacophoreBase():
         # ((x1, y1, z1), (x2, y2, z2), (x3, y3, z3), (x4, y4, z4))
         # triple product is calculated for 1-2, 1-3 and 1-4 vectors
 
+        def get_angles(p, k):
+            # get the angles of the lines which ends in k-point and a plane
+            # p is (4 x 3) numpy array
+            # http://kitchingroup.cheme.cmu.edu/blog/2015/01/18/Equation-of-a-plane-through-three-points/
+            pp = np.delete(p, k, 0)
+            v1 = pp[1] - pp[0]
+            v2 = pp[2] - pp[0]
+            cp = np.cross(v1, v2)
+            d = np.dot(cp, pp[2])
+            dist = (np.dot(cp, p[k]) - d) / sqrt(sum(cp ** 2))  # signed distance to plane
+            return tuple(180 * asin(dist / np.linalg.norm(p[k] - pp[i])) / pi for i in range(3))
+
+        def check_tolerance(p, tol=0):
+            # return True if quadruplet within the tolerance range
+            # look for a minimal angle regardless sign
+            for i in range(4):
+                res = get_angles(np.array(p), i)
+                if any(-tol <= value <= tol for value in res):
+                    return True
+            return False
+            # res = np.array([get_angles(np.array(p), i) for i in range(4)])
+            # return ((-tol <= res) & (res <= tol)).any()
+
         def det(a):
             return (a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2])
                     - a[1][0] * (a[0][1] * a[2][2] - a[2][1] * a[0][2])
                     + a[2][0] * (a[0][1] * a[1][2] - a[1][1] * a[0][2]))
 
-        # calc difference between coord of the first point and all other points
-        b = [[j - coord[0][i] for i, j in enumerate(elm)] for elm in coord[1:]]
-        # calc the signed volume of parallelepiped
-        d = det(b)
-        if d > tol:
-            return 1
-        if d < -tol:
-            return -1
-        return 0
+        if len(set(coord)) < 4 or tol and check_tolerance(coord, tol):
+            return 0
+        else:
+            # calc difference between coord of the first point and all other points
+            b = [[j - coord[0][i] for i, j in enumerate(elm)] for elm in coord[1:]]
+            # calc the signed volume of parallelepiped
+            d = det(b)
+            if d > 0:
+                return 1
+            if d < 0:
+                return -1
+            else:
+                return 0
 
     def get_bin_step(self):
         return self.__bin_step
