@@ -126,7 +126,7 @@ class PharmacophoreBase():
             feature_signatures.append((feature_labels[num_i],) + tuple(sorted(sign)))
         return tuple(feature_signatures)
 
-    def __get_canon_feature_signatures(self, ids=None, feature_labels=None, cache_results=True):
+    def __get_canon_feature_signatures(self, ids=None, feature_labels=None, cache_results=False):
         ids = self._get_ids(ids)
         if self.__cached and self.__cached_ids == ids:
             return self.__cached_canon_feature_signatures
@@ -154,7 +154,7 @@ class PharmacophoreBase():
         if self.__cached and self.__cached_ids == ids:
             return tuple(sorted(self.__cached_canon_feature_signatures))
         else:
-            return tuple(sorted(self.__get_canon_feature_signatures(ids=ids)))
+            return tuple(sorted(self.__get_canon_feature_signatures(ids=ids, cache_results=True)))
 
     def __get_signature_md5(self, ids=None):
         s = self.__get_signature(ids=ids)
@@ -164,7 +164,7 @@ class PharmacophoreBase():
         ids = self._get_ids(ids)
         if len(ids) > 3:
             # sort to get sorted ids
-            canon_names = self.__get_canon_feature_signatures(ids=ids)
+            canon_names = self.__get_canon_feature_signatures(ids=ids, cache_results=True)
             canon_names, ids = self.__sort_two_lists(canon_names, ids)
 
             if len(set(canon_names)) == len(canon_names):
@@ -193,7 +193,7 @@ class PharmacophoreBase():
         # achiral objects should have all 0 (right and left simplexes should compensate each other)
         # for chiral objects the stereo is defined by the first non-zero simplex (simplexes are sorted by priority)
         d = defaultdict(int)
-        # labels = self.__get_canon_feature_signatures(ids)
+        # labels = self.__get_canon_feature_signatures(ids, cache_results=True)
         for comb in combinations(range(len(ids)), 4):
             simplex_ids = tuple(ids[i] for i in comb)
             name, stereo = self.__gen_canon_simplex_name(simplex_ids,
