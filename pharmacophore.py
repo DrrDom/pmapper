@@ -179,22 +179,21 @@ class PharmacophoreBase():
         # achiral objects should have all 0 (right and left simplexes should compensate each other)
         # for chiral objects the stereo is defined by the first non-zero simplex (simplexes are sorted by priority)
         d = defaultdict(int)
+        # labels = self.__get_canon_feature_signatures(ids)
         for comb in combinations(range(len(ids)), 4):
             simplex_ids = tuple(ids[i] for i in comb)
             name, stereo = self.__gen_canon_simplex_name(simplex_ids,
                                                          self.__get_canon_feature_signatures(simplex_ids),
+                                                         # self.__get_canon_feature_signatures(simplex_ids, tuple(labels[i] for i in comb)),
                                                          tol)
             d[name] += stereo
 
-        stereo = 0
         for k, v in sorted(d.items()):
             if v > 0:
-                stereo = 1
-                break
+                return 1
             elif v < 0:
-                stereo = -1
-                break
-        return stereo
+                return -1
+        return 0
 
     def __gen_canon_simplex_name(self, feature_ids, feature_names, tol=0):
         # return canon simplex signature and stereo
