@@ -110,8 +110,7 @@ class PharmacophoreBase():
         """
         if ids is not None and feature_labels is not None and len(ids) != len(feature_labels):
             raise Exception('The number of feature ids and labels must be the same')
-        if ids is None:
-            ids = self.__g.nodes()
+        ids = self._get_ids(ids)
         if feature_labels is None:
             feature_labels = tuple(self.__g.node[i]['label'] for i in ids)
         feature_signatures = []
