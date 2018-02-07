@@ -159,33 +159,15 @@ class PharmacophoreBase():
         s = self.__get_signature(ids=ids)
         return md5(pickle.dumps(repr(s)))
 
-    def _get_stereo(self, ids=None, tol=0):
+    def _get_stereo(self, ids=None, tol=0, bin_step=None):
         ids = self._get_ids(ids)
-        if len(ids) > 3:
-            # sort to get sorted ids
-            canon_names = self.__get_canon_feature_signatures(ids=ids, cache_results=True)
-            canon_names, ids = self.__sort_two_lists(canon_names, ids)
-
-            if len(set(canon_names)) == len(canon_names):
-                # if all points are different sign can be determined by the first four points which are not in one plane
-                stereo = 0
-                for comb in combinations(ids, 4):
-                    if self.__nx_version == 2:
-                        s = self.__get_stereo_sign(coord=tuple(self.__g.nodes[i]['xyz'] for i in comb), tol=tol)
-                    else:
-                        s = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in comb), tol=tol)
-                    if s != 0:
-                        stereo = s
-                        break
-            else:
-                stereo = self.__calc_full_stereo(ids, tol)
-
+        if len(set(tuple(coords for (label, coords) in self.get_feature_coords()))) > 3:
+            stereo = self.__calc_full_stereo(ids, tol, bin_step)
         else:
-            stereo = 0
-
+            stereo = "0"
         return stereo
 
-    def __calc_full_stereo(self, ids, tol=0):
+    def __calc_full_stereo(self, ids, tol=0, bin_step=None):
         # input features and ids are already sorted by feature names (canon_names)
 
         # sum stereo of individual simplexes
@@ -193,6 +175,26 @@ class PharmacophoreBase():
         # for chiral objects the stereo is defined by the first non-zero simplex (simplexes are sorted by priority)
         d = defaultdict(int)
         # labels = self.__get_canon_feature_signatures(ids, cache_results=True)
+
+        ids = self._get_ids(ids)
+
+        if bin_step is not None:
+            self.update(bin_step)
+
+        # select feature having highest label for features with identical coordinates
+        # tmp = {}
+        # for i, v in self.__g.nodes(data=True):
+        #     if i in ids:
+        #         if v['xyz'] in tmp:
+        #             if v['label'] > tmp[v['xyz']][1]:
+        #                 tmp[v['xyz']] = (i, v['label'])
+        #         else:
+        #             tmp[v['xyz']] = (i, v['label'])
+        #
+        # print(tmp)
+
+        # ids = tuple(sorted(v[0] for v in tmp.values()))
+
         for comb in combinations(range(len(ids)), 4):
             simplex_ids = tuple(ids[i] for i in comb)
             name, stereo = self.__gen_canon_simplex_name(simplex_ids,
@@ -201,12 +203,15 @@ class PharmacophoreBase():
                                                          tol)
             d[name] += stereo
 
-        for k, v in sorted(d.items()):
-            if v > 0:
-                return 1
-            elif v < 0:
-                return -1
-        return 0
+        # for k, v in sorted(d.items()):
+        #     if v > 0:
+        #         return 1
+        #     elif v < 0:
+        #         return -1
+
+        # return tuple(sorted((md5(pickle.dumps(repr(k))).hexdigest(), v) for k, v in d.items()))
+        # return md5(pickle.dumps(tuple(v for k, v in sorted(d.items())))).hexdigest()
+        return md5(pickle.dumps(tuple(sorted(d.items())))).hexdigest()
 
     def __gen_canon_simplex_name(self, feature_ids, feature_names, tol=0):
         # return canon simplex signature and stereo
@@ -334,8 +339,8 @@ class PharmacophoreBase():
     def get_signature_md5bin(self):
         return self.__get_signature_md5().digest()
 
-    def get_stereo(self, tol=0):
-        return self._get_stereo(tol=tol)
+    def get_stereo(self, tol=0, bin_step=None):
+        return self._get_stereo(tol=tol, bin_step=bin_step)
 
     def get_feature_coords(self):
         return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True)]
