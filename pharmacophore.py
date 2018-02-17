@@ -82,13 +82,13 @@ class PharmacophoreBase():
             self.__g.add_node(i, label=label, xyz=coords)
         self.__update_dists()
 
-    def __update_dists(self):
+    def __update_dists(self, bin_step=None):
         if self.__nx_version == 2:
             for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz']))
+                self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step))
         else:
             for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz']))
+                self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step))
 
     def __dist(self, coord1, coord2, bin_step=None):
         # coord1, coord2 - tuples of (x, y, z)
@@ -159,15 +159,16 @@ class PharmacophoreBase():
         s = self.__get_signature(ids=ids)
         return md5(pickle.dumps(repr(s)))
 
-    def _get_stereo(self, ids=None, tol=0, bin_step=None):
+    def _get_stereo(self, ids=None, tol=0):
         ids = self._get_ids(ids)
         if len(set(tuple(coords for (label, coords) in self.get_feature_coords()))) > 3:
-            stereo = self.__calc_full_stereo(ids, tol, bin_step)
+            stereo = self.__calc_full_stereo(ids, tol)
         else:
-            stereo = "0"
+            stereo = self.__get_signature_md5()
+            # stereo = "0"
         return stereo
 
-    def __calc_full_stereo(self, ids, tol=0, bin_step=None):
+    def __calc_full_stereo(self, ids, tol=0):
         # input features and ids are already sorted by feature names (canon_names)
 
         # sum stereo of individual simplexes
@@ -178,22 +179,9 @@ class PharmacophoreBase():
 
         ids = self._get_ids(ids)
 
-        if bin_step is not None:
-            self.update(bin_step)
+        # self.update(bin_step)
 
-        # select feature having highest label for features with identical coordinates
-        # tmp = {}
-        # for i, v in self.__g.nodes(data=True):
-        #     if i in ids:
-        #         if v['xyz'] in tmp:
-        #             if v['label'] > tmp[v['xyz']][1]:
-        #                 tmp[v['xyz']] = (i, v['label'])
-        #         else:
-        #             tmp[v['xyz']] = (i, v['label'])
-        #
-        # print(tmp)
-
-        # ids = tuple(sorted(v[0] for v in tmp.values()))
+        # labels = nx.get_node_attributes(self.__g, 'label')
 
         for comb in combinations(range(len(ids)), 4):
             simplex_ids = tuple(ids[i] for i in comb)
@@ -201,7 +189,8 @@ class PharmacophoreBase():
                                                          self.__get_canon_feature_signatures(ids=simplex_ids, cache_results=False),
                                                          # self.__get_canon_feature_signatures(ids=simplex_ids, feature_labels=tuple(labels[i] for i in comb), cache_results=False),
                                                          tol)
-            d[name] += stereo
+            # name = tuple(sorted(labels[i] for i in simplex_ids))
+            d[(name, stereo)] += 1
 
         # for k, v in sorted(d.items()):
         #     if v > 0:
@@ -211,6 +200,7 @@ class PharmacophoreBase():
 
         # return tuple(sorted((md5(pickle.dumps(repr(k))).hexdigest(), v) for k, v in d.items()))
         # return md5(pickle.dumps(tuple(v for k, v in sorted(d.items())))).hexdigest()
+        # return md5(pickle.dumps(tuple(sorted(d.items())))).hexdigest(), tuple(sorted(d.items()))
         return md5(pickle.dumps(tuple(sorted(d.items())))).hexdigest()
 
     def __gen_canon_simplex_name(self, feature_ids, feature_names, tol=0):
@@ -339,17 +329,16 @@ class PharmacophoreBase():
     def get_signature_md5bin(self):
         return self.__get_signature_md5().digest()
 
-    def get_stereo(self, tol=0, bin_step=None):
-        return self._get_stereo(tol=tol, bin_step=bin_step)
+    def get_stereo(self, tol=0):
+        return self._get_stereo(tol=tol)
 
     def get_feature_coords(self):
         return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True)]
 
-    def update(self, bin_step=None):
-        if bin_step is not None and bin_step != self.__bin_step:
-            self.__bin_step = bin_step
-            self.__update_dists()
-            self.__cached = False
+    def update(self, bin_step):
+        self.__bin_step = bin_step
+        self.__update_dists(bin_step)
+        self.__cached = False
 
     def iterate_pharm(self, min_features=1, max_features=None, tol=0, return_feature_ids=True):
         ids = self._get_ids()
