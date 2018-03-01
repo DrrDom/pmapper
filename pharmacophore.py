@@ -62,9 +62,6 @@ class PharmacophoreBase():
         self.__g = nx.Graph()
         self.__bin_step = bin_step
         self.__nx_version = int(nx.__version__.split('.')[0])
-        self.__cached = False
-        self.__cached_ids = None
-        self.__cached_canon_feature_signatures = None
 
     @staticmethod
     def __remove_dupl(ls):
@@ -125,18 +122,11 @@ class PharmacophoreBase():
             feature_signatures.append((feature_labels[num_i],) + tuple(sorted(sign)))
         return tuple(feature_signatures)
 
-    def __get_canon_feature_signatures(self, ids=None, feature_labels=None, cache_results=False):
+    def __get_canon_feature_signatures(self, ids=None, feature_labels=None):
         ids = self._get_ids(ids)
-        if self.__cached and self.__cached_ids == ids:
-            return self.__cached_canon_feature_signatures
-        else:
-            f = self.__get_feature_signatures(ids=ids, feature_labels=feature_labels)
-            f = self.__get_feature_signatures(ids=ids, feature_labels=f)
-            if cache_results:
-                self.__cached = True
-                self.__cached_ids = ids
-                self.__cached_canon_feature_signatures = f
-            return f
+        f = self.__get_feature_signatures(ids=ids, feature_labels=feature_labels)
+        f = self.__get_feature_signatures(ids=ids, feature_labels=f)
+        return f
 
     def _get_ids(self, ids=None):
         if ids is None:
@@ -145,10 +135,7 @@ class PharmacophoreBase():
 
     def __get_graph_signature(self, ids=None):
         ids = self._get_ids(ids)
-        if self.__cached and self.__cached_ids == ids:
-            return tuple(sorted(self.__cached_canon_feature_signatures))
-        else:
-            return tuple(sorted(self.__get_canon_feature_signatures(ids=ids, cache_results=True)))
+        return tuple(sorted(self.__cached_canon_feature_signatures))
 
     def __get_graph_signature_md5(self, ids=None):
         s = self.__get_graph_signature(ids=ids)
@@ -162,7 +149,7 @@ class PharmacophoreBase():
             for comb in combinations(range(len(ids)), 4):
                 simplex_ids = tuple(ids[i] for i in comb)
                 name, stereo = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
-                                                                       self.__get_canon_feature_signatures(ids=simplex_ids, cache_results=False),
+                                                                       self.__get_canon_feature_signatures(ids=simplex_ids),
                                                                        tol)
                 d[(name, stereo)] += 1
             return md5(pickle.dumps(tuple(sorted(d.items())))).hexdigest()
@@ -291,7 +278,7 @@ class PharmacophoreBase():
         data = self.__g.nodes(data=True)
         return Counter([item[1]['label'] for item in data])
 
-    def get_signature_md5(self, bin_step=2, ids=None, tol=0):
+    def get_signature_md5(self, bin_step, ids=None, tol=0):
         self.__update_dists(bin_step)
         return self.__get_full_hash(ids, tol)
 
@@ -304,9 +291,8 @@ class PharmacophoreBase():
     def update(self, bin_step):
         self.__bin_step = bin_step
         self.__update_dists(bin_step)
-        self.__cached = False
 
-    def iterate_pharm(self, bin_step=2, min_features=1, max_features=None, tol=0, return_feature_ids=True):
+    def iterate_pharm(self, bin_step, min_features=1, max_features=None, tol=0, return_feature_ids=True):
         ids = self._get_ids()
         self.__update_dists(bin_step)
         if max_features is None:
