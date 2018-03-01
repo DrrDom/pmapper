@@ -83,21 +83,21 @@ class PharmacophoreBase():
         self.__update_dists()
 
     def __update_dists(self, bin_step=None):
-        if self.__nx_version == 2:
-            for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step))
-        else:
-            for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step))
+        if bin_step != self.__bin_step:
+            if self.__nx_version == 2:
+                for i, j in combinations(self.__g.nodes(), 2):
+                    self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step))
+            else:
+                for i, j in combinations(self.__g.nodes(), 2):
+                    self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step))
+            self.__bin_step = bin_step
 
-    def __dist(self, coord1, coord2, bin_step=None):
+    def __dist(self, coord1, coord2, bin_step):
         # coord1, coord2 - tuples of (x, y, z)
-        # bin_step: None means default, 0 means no transformation, other number will use as regular
+        # bin_step: None or 0 real distances will be returned
         tmp = sum([(i - j) ** 2 for i, j in zip(coord1, coord2)]) ** 0.5
-        if bin_step == 0 or self.__bin_step == 0:
+        if not bin_step:
             return tmp
-        elif bin_step is None:
-            return int(tmp // self.__bin_step)
         else:
             return int(tmp // bin_step)
 
@@ -154,36 +154,28 @@ class PharmacophoreBase():
         s = self.__get_graph_signature(ids=ids)
         return md5(pickle.dumps(repr(s)))
 
-    def _get_stereo(self, ids=None, tol=0):
+    def __get_full_hash(self, ids=None, tol=0):
+
+        def calc_full_stereo(ids, tol):
+            d = defaultdict(int)
+            ids = self._get_ids(ids)
+            for comb in combinations(range(len(ids)), 4):
+                simplex_ids = tuple(ids[i] for i in comb)
+                name, stereo = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
+                                                                       self.__get_canon_feature_signatures(ids=simplex_ids, cache_results=False),
+                                                                       tol)
+                d[(name, stereo)] += 1
+            return md5(pickle.dumps(tuple(sorted(d.items())))).hexdigest()
+
         ids = self._get_ids(ids)
-        if len(set(tuple(coords for (label, coords) in self.get_feature_coords()))) > 3:
-            stereo = self.__calc_full_stereo(ids, tol)
+        if len(set(tuple(coords for (label, coords) in self.get_feature_coords(ids)))) > 3:
+            stereo = calc_full_stereo(ids, tol)
         else:
-            stereo = self.__get_graph_signature_md5().hexdigest()
-            # stereo = "0"
+            stereo = self.__get_graph_signature_md5(ids).hexdigest()
         return stereo
 
-    def __calc_full_stereo(self, ids, tol=0):
-        # input features and ids are already sorted by feature names (canon_names)
-
-        # sum stereo of individual simplexes
-        # achiral objects should have all 0 (right and left simplexes should compensate each other)
-        # for chiral objects the stereo is defined by the first non-zero simplex (simplexes are sorted by priority)
-        d = defaultdict(int)
-
-        ids = self._get_ids(ids)
-
-        for comb in combinations(range(len(ids)), 4):
-            simplex_ids = tuple(ids[i] for i in comb)
-            name, stereo = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
-                                                                   self.__get_canon_feature_signatures(ids=simplex_ids, cache_results=False),
-                                                                   tol)
-            d[(name, stereo)] += 1
-
-        return md5(pickle.dumps(tuple(sorted(d.items())))).hexdigest()
-
     def __gen_quadruplet_canon_name_stereo(self, feature_ids, feature_names, tol=0):
-        # return canon simplex signature and stereo
+        # return canon quadruplet signature and stereo
 
         c = Counter(feature_names)
 
@@ -299,39 +291,32 @@ class PharmacophoreBase():
         data = self.__g.nodes(data=True)
         return Counter([item[1]['label'] for item in data])
 
-    def get_signature(self):
-        return self.__get_graph_signature()
+    def get_signature_md5(self, bin_step=2, ids=None, tol=0):
+        self.__update_dists(bin_step)
+        return self.__get_full_hash(ids, tol)
 
-    def get_signature_md5(self):
-        return self.__get_graph_signature_md5().hexdigest()
-
-    def get_signature_md5bin(self):
-        return self.__get_graph_signature_md5().digest()
-
-    def get_stereo(self, tol=0):
-        return self._get_stereo(tol=tol)
-
-    def get_feature_coords(self):
-        return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True)]
+    def get_feature_coords(self, ids=None):
+        if ids is None:
+            return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True)]
+        else:
+            return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True) if k in set(ids)]
 
     def update(self, bin_step):
         self.__bin_step = bin_step
         self.__update_dists(bin_step)
         self.__cached = False
 
-    def iterate_pharm(self, min_features=1, max_features=None, tol=0, return_feature_ids=True):
+    def iterate_pharm(self, bin_step=2, min_features=1, max_features=None, tol=0, return_feature_ids=True):
         ids = self._get_ids()
+        self.__update_dists(bin_step)
         if max_features is None:
             max_features = len(self.__g.nodes())
         for n in range(min_features, max_features + 1):
             for comb in combinations(ids, n):
                 if return_feature_ids:
-                    yield self.__get_graph_signature_md5(ids=comb).hexdigest(), \
-                          self._get_stereo(ids=comb, tol=tol), \
-                          comb
+                    yield self.__get_full_hash(ids=comb, tol=tol), comb
                 else:
-                    yield self.__get_graph_signature_md5(ids=comb).hexdigest(), \
-                          self._get_stereo(ids=comb, tol=tol)
+                    yield self.__get_full_hash(ids=comb, tol=tol)
 
 
 class PharmacophoreMatch(PharmacophoreBase):
