@@ -131,7 +131,6 @@ class PharmacophoreBase():
             return self.__cached_canon_feature_signatures
         else:
             f = self.__get_feature_signatures(ids=ids, feature_labels=feature_labels)
-            # f = tuple(self.__get_dense_feature_sign(s) for s in f)
             f = self.__get_feature_signatures(ids=ids, feature_labels=f)
             if cache_results:
                 self.__cached = True
@@ -139,24 +138,20 @@ class PharmacophoreBase():
                 self.__cached_canon_feature_signatures = f
             return f
 
-    # @staticmethod
-    # def __get_dense_feature_sign(feature_signature):
-    #     return ''.join(str(j) for i in feature_signature for j in i)
-
     def _get_ids(self, ids=None):
         if ids is None:
             ids = self.__g.nodes()
         return tuple(sorted(set(ids)))
 
-    def __get_signature(self, ids=None):
+    def __get_graph_signature(self, ids=None):
         ids = self._get_ids(ids)
         if self.__cached and self.__cached_ids == ids:
             return tuple(sorted(self.__cached_canon_feature_signatures))
         else:
             return tuple(sorted(self.__get_canon_feature_signatures(ids=ids, cache_results=True)))
 
-    def __get_signature_md5(self, ids=None):
-        s = self.__get_signature(ids=ids)
+    def __get_graph_signature_md5(self, ids=None):
+        s = self.__get_graph_signature(ids=ids)
         return md5(pickle.dumps(repr(s)))
 
     def _get_stereo(self, ids=None, tol=0):
@@ -164,7 +159,7 @@ class PharmacophoreBase():
         if len(set(tuple(coords for (label, coords) in self.get_feature_coords()))) > 3:
             stereo = self.__calc_full_stereo(ids, tol)
         else:
-            stereo = self.__get_signature_md5().hexdigest()
+            stereo = self.__get_graph_signature_md5().hexdigest()
             # stereo = "0"
         return stereo
 
@@ -175,35 +170,19 @@ class PharmacophoreBase():
         # achiral objects should have all 0 (right and left simplexes should compensate each other)
         # for chiral objects the stereo is defined by the first non-zero simplex (simplexes are sorted by priority)
         d = defaultdict(int)
-        # labels = self.__get_canon_feature_signatures(ids, cache_results=True)
 
         ids = self._get_ids(ids)
 
-        # self.update(bin_step)
-
-        # labels = nx.get_node_attributes(self.__g, 'label')
-
         for comb in combinations(range(len(ids)), 4):
             simplex_ids = tuple(ids[i] for i in comb)
-            name, stereo = self.__gen_canon_simplex_name(simplex_ids,
-                                                         self.__get_canon_feature_signatures(ids=simplex_ids, cache_results=False),
-                                                         # self.__get_canon_feature_signatures(ids=simplex_ids, feature_labels=tuple(labels[i] for i in comb), cache_results=False),
-                                                         tol)
-            # name = tuple(sorted(labels[i] for i in simplex_ids))
+            name, stereo = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
+                                                                   self.__get_canon_feature_signatures(ids=simplex_ids, cache_results=False),
+                                                                   tol)
             d[(name, stereo)] += 1
 
-        # for k, v in sorted(d.items()):
-        #     if v > 0:
-        #         return 1
-        #     elif v < 0:
-        #         return -1
-
-        # return tuple(sorted((md5(pickle.dumps(repr(k))).hexdigest(), v) for k, v in d.items()))
-        # return md5(pickle.dumps(tuple(v for k, v in sorted(d.items())))).hexdigest()
-        # return md5(pickle.dumps(tuple(sorted(d.items())))).hexdigest(), tuple(sorted(d.items()))
         return md5(pickle.dumps(tuple(sorted(d.items())))).hexdigest()
 
-    def __gen_canon_simplex_name(self, feature_ids, feature_names, tol=0):
+    def __gen_quadruplet_canon_name_stereo(self, feature_ids, feature_names, tol=0):
         # return canon simplex signature and stereo
 
         c = Counter(feature_names)
@@ -219,7 +198,7 @@ class PharmacophoreBase():
             if self.__nx_version == 2:
 
                 if len(c) == len(names):  # system ABCD
-                    stereo = self.__get_stereo_sign(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
+                    stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
 
                 else:  # system AABB
 
@@ -233,12 +212,12 @@ class PharmacophoreBase():
                         if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
                             ids[2], ids[3] = ids[3], ids[2]
                             names[2], names[3] = names[3], names[2]
-                        stereo = self.__get_stereo_sign(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
+                        stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
 
             else:
 
                 if len(c) == len(names):   # system ABCD
-                    stereo = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+                    stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
 
                 else:   # system AABB
 
@@ -252,7 +231,7 @@ class PharmacophoreBase():
                         if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
                             ids[2], ids[3] = ids[3], ids[2]
                             names[2], names[3] = names[3], names[2]
-                        stereo = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+                        stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
 
         return tuple(sorted(feature_names)), stereo
 
@@ -263,7 +242,7 @@ class PharmacophoreBase():
         return map(list, zip(*paired_sorted))  # two lists
 
     @staticmethod
-    def __get_stereo_sign(coord, tol=0):
+    def __get_quadruplet_stereo(coord, tol=0):
         # coord - tuple of tuples containing coordinates of four points in a specific order
         # ((x1, y1, z1), (x2, y2, z2), (x3, y3, z3), (x4, y4, z4))
         # triple product is calculated for 1-2, 1-3 and 1-4 vectors
@@ -321,13 +300,13 @@ class PharmacophoreBase():
         return Counter([item[1]['label'] for item in data])
 
     def get_signature(self):
-        return self.__get_signature()
+        return self.__get_graph_signature()
 
     def get_signature_md5(self):
-        return self.__get_signature_md5().hexdigest()
+        return self.__get_graph_signature_md5().hexdigest()
 
     def get_signature_md5bin(self):
-        return self.__get_signature_md5().digest()
+        return self.__get_graph_signature_md5().digest()
 
     def get_stereo(self, tol=0):
         return self._get_stereo(tol=tol)
@@ -347,11 +326,11 @@ class PharmacophoreBase():
         for n in range(min_features, max_features + 1):
             for comb in combinations(ids, n):
                 if return_feature_ids:
-                    yield self.__get_signature_md5(ids=comb).hexdigest(), \
+                    yield self.__get_graph_signature_md5(ids=comb).hexdigest(), \
                           self._get_stereo(ids=comb, tol=tol), \
                           comb
                 else:
-                    yield self.__get_signature_md5(ids=comb).hexdigest(), \
+                    yield self.__get_graph_signature_md5(ids=comb).hexdigest(), \
                           self._get_stereo(ids=comb, tol=tol)
 
 
