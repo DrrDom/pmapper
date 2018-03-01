@@ -135,7 +135,7 @@ class PharmacophoreBase():
 
     def __get_graph_signature(self, ids=None):
         ids = self._get_ids(ids)
-        return tuple(sorted(self.__cached_canon_feature_signatures))
+        return tuple(sorted(self.__get_canon_feature_signatures(ids=ids)))
 
     def __get_graph_signature_md5(self, ids=None):
         s = self.__get_graph_signature(ids=ids)
