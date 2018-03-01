@@ -164,7 +164,7 @@ class PharmacophoreBase():
         if len(set(tuple(coords for (label, coords) in self.get_feature_coords()))) > 3:
             stereo = self.__calc_full_stereo(ids, tol)
         else:
-            stereo = self.__get_signature_md5()
+            stereo = self.__get_signature_md5().hexdigest()
             # stereo = "0"
         return stereo
 
