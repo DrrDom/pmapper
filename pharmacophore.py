@@ -80,21 +80,21 @@ class PharmacophoreBase():
         self.__update_dists()
 
     def __update_dists(self, bin_step=None):
-        if bin_step != self.__bin_step:
-            if self.__nx_version == 2:
-                for i, j in combinations(self.__g.nodes(), 2):
-                    self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step))
-            else:
-                for i, j in combinations(self.__g.nodes(), 2):
-                    self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step))
-            self.__bin_step = bin_step
+        if self.__nx_version == 2:
+            for i, j in combinations(self.__g.nodes(), 2):
+                self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step))
+        else:
+            for i, j in combinations(self.__g.nodes(), 2):
+                self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step))
 
-    def __dist(self, coord1, coord2, bin_step):
+    def __dist(self, coord1, coord2, bin_step=None):
         # coord1, coord2 - tuples of (x, y, z)
-        # bin_step: None or 0 real distances will be returned
+        # bin_step: None means default, 0 means no transformation, other number will use as regular
         tmp = sum([(i - j) ** 2 for i, j in zip(coord1, coord2)]) ** 0.5
-        if not bin_step:
+        if bin_step == 0 or self.__bin_step == 0:
             return tmp
+        elif bin_step is None:
+            return int(tmp // self.__bin_step)
         else:
             return int(tmp // bin_step)
 
@@ -278,8 +278,7 @@ class PharmacophoreBase():
         data = self.__g.nodes(data=True)
         return Counter([item[1]['label'] for item in data])
 
-    def get_signature_md5(self, bin_step, ids=None, tol=0):
-        self.__update_dists(bin_step)
+    def get_signature_md5(self, ids=None, tol=0):
         return self.__get_full_hash(ids, tol)
 
     def get_feature_coords(self, ids=None):
@@ -289,12 +288,12 @@ class PharmacophoreBase():
             return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True) if k in set(ids)]
 
     def update(self, bin_step):
-        self.__bin_step = bin_step
-        self.__update_dists(bin_step)
+        if bin_step is not None and bin_step != self.__bin_step:
+            self.__bin_step = bin_step
+            self.__update_dists(bin_step)
 
-    def iterate_pharm(self, bin_step, min_features=1, max_features=None, tol=0, return_feature_ids=True):
+    def iterate_pharm(self, min_features=1, max_features=None, tol=0, return_feature_ids=True):
         ids = self._get_ids()
-        self.__update_dists(bin_step)
         if max_features is None:
             max_features = len(self.__g.nodes())
         for n in range(min_features, max_features + 1):
@@ -323,48 +322,56 @@ class PharmacophoreMatch(PharmacophoreBase):
         self.__nm = iso.categorical_node_match('label', '_')
         self.__em = iso.numerical_edge_match('dist', 0)
 
-    def __fit_graph(self, g, mapping=False):
+    def __fit_graph(self, model):
         if self.get_bin_step() != 0:
-            gm = iso.GraphMatcher(self._Pharmacophore__g, g, node_match=self.__nm, edge_match=self.__em)
+            gm = iso.GraphMatcher(self._PharmacophoreBase__g, model, node_match=self.__nm, edge_match=self.__em)
         else:
-            gm = iso.GraphMatcher(self._Pharmacophore__g, g, node_match=self.__nm, edge_match=iso.numerical_edge_match('dist', 0, atol=0.75))
-        if not mapping:
-            return gm.subgraph_is_isomorphic()
-        else:
-            return gm.subgraph_is_isomorphic(), gm.mapping
+            gm = iso.GraphMatcher(self._PharmacophoreBase__g, model, node_match=self.__nm, edge_match=iso.numerical_edge_match('dist', 0, atol=0.75))
+        return gm
 
-    def fit_model(self, target, n_omitted=1, essential_features=None):
+    def fit_model(self, model, n_omitted=0, essential_features=None, tol=0):
         """
         target is a target pharmacophore model which is used for matching (it should be a subgraph of the current
             pharmacophore graph).
         n_omitted is a number of possible simultaneously omitted features in target pharmacophore.
         essential_features is a list of ids of features which will not be omitted in target pharmacophore,
-            not mentioned features will be omitted iteratively (optional features).
+            not mentioned features can be omitted iteratively (optional features).
             Default: None - means all features are optional.
-        polar_only if True then only polar features of target pharmacophore will be used for matching.
+        tol: tolerance when define stereoconfiguration (flat quadruplets)
 
         return: tuple of feature ids of a target (query) model fit to the current pharmacophore
         """
 
-        if self.get_bin_step() != target.get_bin_step():
+        if self.get_bin_step() != model.get_bin_step():
             raise ValueError('bin_steps in both pharmacophores are different, %f and %f' %
-                             (self.get_bin_step(), target.get_bin_step()))
+                             (self.get_bin_step(), model.get_bin_step()))
 
-        ids = set(target._get_ids())
+        ids = set(model._get_ids())
         if essential_features:
-            ids = ids.union(essential_features)
+            if not ids.issuperset(essential_features):
+                raise Exception('bin_steps in both pharmacophores are different, %f and %f' %
+                                (self.get_bin_step(), model.get_bin_step()))
             optional_features = ids.difference(essential_features)
         else:
             optional_features = ids
 
-        if self.__fit_graph(target.get_graph().subgraph(ids)):
-            return tuple(ids)
-
-        for n in range(1, n_omitted + 1):
-            for i in combinations(optional_features, n):
-                res, mapping = self.__fit_graph(target.get_graph().subgraph(ids.difference(i)), mapping=True)
-                if res and self._get_stereo(ids=tuple(mapping.keys())) == target._get_stereo(ids=tuple(ids.difference(i))):
-                    return tuple(ids.difference(i))
+        # check first for graph isomorphism, if yes iteratively evaluate hashes and compare with reference
+        if n_omitted:
+            for n in range(1, n_omitted + 1):
+                for i in combinations(optional_features, n):
+                    gm = self.__fit_graph(model._PharmacophoreBase__g.subgraph(ids.difference(i)))
+                    for j, mapping in enumerate(gm.subgraph_isomorphisms_iter()):
+                        if j == 0:
+                            ref = model.get_signature_md5(ids=tuple(mapping.values()), tol=tol)
+                        if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
+                            return tuple(mapping.values())
+        else:
+            gm = self.__fit_graph(model._PharmacophoreBase__g)
+            for j, mapping in enumerate(gm.subgraph_isomorphisms_iter()):
+                if j == 0:
+                    ref = model.get_signature_md5(tol=tol)
+                if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
+                    return tuple(ids)
         return None
 
 
@@ -513,15 +520,13 @@ class Pharmacophore(PharmacophoreMatch):
         self.load_from_feature_coords(coord)
 
     def save_to_pma(self, fname, feature_ids=None):
-        coords = self.get_feature_coords()
-        if feature_ids:
-            coords = [v for i, v in coords if i in feature_ids]
+        coords = self.get_feature_coords(feature_ids)
         obj = {'bin_step': self.get_bin_step(), 'feature_coords': coords}
         with open(fname, 'wt') as f:
             f.write(json.dumps(obj))
 
     def load_from_pma(self, fname):
-        with open(fname)as f:
+        with open(fname) as f:
             d = json.loads(f.readline().strip())
             feature_coords = tuple((feature[0], tuple(feature[1])) for feature in d['feature_coords'])
             self.load_from_feature_coords(feature_coords)
