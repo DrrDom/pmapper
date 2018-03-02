@@ -13,6 +13,8 @@ import json
 import numpy as np
 
 from rdkit import Chem
+from rdkit.Chem import Conformer
+from rdkit.Geometry import Point3D
 from collections import Counter, defaultdict
 from itertools import combinations
 from hashlib import md5
@@ -398,7 +400,8 @@ class PharmacophoreMatch(PharmacophoreBase):
 
 class Pharmacophore(PharmacophoreMatch):
 
-    feat_dict = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
+    feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
+    feat_dict_mol = {'A': 7, 'P': 2, 'N': 3, 'H': 4, 'D': 5, 'a': 10}
 
     def __init__(self, bin_step=2):
         super().__init__(bin_step=bin_step)
@@ -550,12 +553,12 @@ class Pharmacophore(PharmacophoreMatch):
         root.setAttribute('pharmacophoreType', 'LIGAND_SCOUT')
         doc.appendChild(root)
         for i, feature in enumerate(coords):
-            if feature[0] in self.feat_dict:
+            if feature[0] in self.feat_dict_ls:
                 if feature[0] != "a":
                     point = doc.createElement('point')
                 else:
                     point = doc.createElement('plane')
-                point.setAttribute('name', self.feat_dict[feature[0]])
+                point.setAttribute('name', self.feat_dict_ls[feature[0]])
                 point.setAttribute('featureId', str(i))
                 point.setAttribute('optional', 'false')
                 point.setAttribute('disabled', 'false')
@@ -590,3 +593,15 @@ class Pharmacophore(PharmacophoreMatch):
             feature_coords = tuple((feature[0], tuple(feature[1])) for feature in d['feature_coords'])
             self.load_from_feature_coords(feature_coords)
             self.update(d['bin_step'])
+
+    def get_mol(self):
+        pmol = Chem.RWMol()
+        all_coords = self.get_feature_coords()
+        for item in all_coords:
+            a = Chem.Atom(self.feat_dict_mol[item[0]])
+            pmol.AddAtom(a)
+        c = Conformer(len(all_coords))
+        for i, coords in enumerate(all_coords):
+            c.SetAtomPosition(i, Point3D(*coords[1]))
+        pmol.AddConformer(c, True)
+        return pmol
