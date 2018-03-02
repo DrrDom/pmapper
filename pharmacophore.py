@@ -398,6 +398,8 @@ class PharmacophoreMatch(PharmacophoreBase):
 
 class Pharmacophore(PharmacophoreMatch):
 
+    feat_dict = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
+
     def __init__(self, bin_step=2):
         super().__init__(bin_step=bin_step)
 
@@ -539,6 +541,42 @@ class Pharmacophore(PharmacophoreMatch):
         pprint.pprint(coord)
 
         self.load_from_feature_coords(coord)
+
+    def save_ls_model(self, fname, name="pmapper_pharmcophore"):
+        coords = self.get_feature_coords()
+        doc = minidom.Document()
+        root = doc.createElement('pharmacophore')
+        root.setAttribute('name', name)
+        root.setAttribute('pharmacophoreType', 'LIGAND_SCOUT')
+        doc.appendChild(root)
+        for i, feature in enumerate(coords):
+            if feature[0] in self.feat_dict:
+                if feature[0] != "a":
+                    point = doc.createElement('point')
+                else:
+                    point = doc.createElement('plane')
+                point.setAttribute('name', self.feat_dict[feature[0]])
+                point.setAttribute('featureId', str(i))
+                point.setAttribute('optional', 'false')
+                point.setAttribute('disabled', 'false')
+                point.setAttribute('weight', '1.0')
+                point.setAttribute('id', 'feature' + str(i))
+                root.appendChild(point)
+                position = doc.createElement('position')
+                for k, j in zip(['x3', 'y3', 'z3'], feature[1]):
+                    position.setAttribute(k, str(j))
+                position.setAttribute('tolerance', '1')
+                point.appendChild(position)
+                if feature[0] == "a":
+                    normal = doc.createElement('normal')
+                    normal.setAttribute('x3', '1')
+                    normal.setAttribute('y3', '1')
+                    normal.setAttribute('z3', '1')
+                    normal.setAttribute('tolerance', '0.5')
+                    point.appendChild(normal)
+
+        with open(fname, 'w') as f:
+            f.write(doc.toprettyxml(indent="  "))
 
     def save_to_pma(self, fname, feature_ids=None):
         coords = self.get_feature_coords(feature_ids)
