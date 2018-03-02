@@ -303,6 +303,27 @@ class PharmacophoreBase():
                 else:
                     yield self.__get_full_hash(ids=comb, tol=tol)
 
+    def iterate_pharm1(self, fix_ids, tol=0, return_feature_ids=True):
+        """
+        take list of feature ids and add one more feature for them to enumerate all possible combinations
+
+        :param fix_ids: list of tuples/lists with feature ids
+        :param tol:
+        :param return_feature_ids:
+        :return:
+        """
+        visited_id_comb = set()
+        for ids in fix_ids:
+            add_ids = set(self.__g.nodes()).difference(ids)
+            for add_id in add_ids:
+                i = tuple(sorted(tuple(ids) + (add_id, )))
+                if i not in visited_id_comb:
+                    visited_id_comb.add(i)
+                    if return_feature_ids:
+                        yield self.__get_full_hash(ids=i, tol=tol), i
+                    else:
+                        yield self.__get_full_hash(ids=i, tol=tol)
+
 
 class PharmacophoreMatch(PharmacophoreBase):
 
