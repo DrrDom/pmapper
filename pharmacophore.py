@@ -39,7 +39,7 @@ def read_smarts_feature_file(file_name):
     return output
 
 
-def load_multi_conf_mol(mol, smarts_features, factory=None, bin_step=2):
+def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1):
     # factory or smarts_featurs should be None to select only one procedure
     if smarts_features is not None and factory is not None:
         raise Exception("Only one options should be not None (smarts_features or factory)")
@@ -60,7 +60,7 @@ def load_multi_conf_mol(mol, smarts_features, factory=None, bin_step=2):
 
 class PharmacophoreBase():
 
-    def __init__(self, bin_step=2):
+    def __init__(self, bin_step=1):
         self.__g = nx.Graph()
         self.__bin_step = bin_step
         self.__nx_version = int(nx.__version__.split('.')[0])
@@ -166,53 +166,83 @@ class PharmacophoreBase():
     def __gen_quadruplet_canon_name_stereo(self, feature_ids, feature_names, tol=0):
         # return canon quadruplet signature and stereo
 
-        c = Counter(feature_names)
+        def sign_dihedral_angle(coords):
+            # Alina code
+            b1 = [i1 - i2 for i1, i2 in zip(coords[0], coords[1])]
+            b2 = [i1 - i2 for i1, i2 in zip(coords[1], coords[2])]
+            b3 = [i1 - i2 for i1, i2 in zip(coords[2], coords[3])]
 
-        # system AAAA or AAAB or AABC is achiral
-        if len(c) == 1 or any(v == 3 for k, v in c.items()) or len(c) == 3:
+            n1 = ((b1[1]*b2[2] - b1[2]*b2[1]), -(b1[0]*b2[2] - b1[2]*b2[0]), (b1[0]*b2[1] - b1[1]*b2[0])) # normal to plane 1
+            n2 = ((b2[1]*b3[2] - b2[2]*b3[1]), -(b2[0]*b3[2] - b2[2]*b3[0]), (b2[0]*b3[1] - b2[1]*b3[0])) # normal to plane 2
+
+            cos_angle = (n1[0]*n2[0] + n1[1]*n2[1] + n1[2]*n2[2]) / (sqrt(n1[0]*n1[0] + n1[1]*n1[1] + n1[2]*n1[2]) + sqrt(n2[0]*n2[0] + n2[1]*n2[1] + n2[2]*n2[2]))
+
+            if cos_angle > 0:
+                res = 1
+            elif cos_angle < 0:
+                res = -1
+            else:
+                res = 0
+            return res
+
+        # less than 4 unique feature coordinates
+        if len(set(tuple(coords for (label, coords) in self.get_feature_coords(feature_ids)))) < 4:
+
             stereo = 0
 
         else:
 
-            names, ids = self.__sort_two_lists(feature_names, feature_ids)
+            c = Counter(feature_names)
 
-            if self.__nx_version == 2:
-
-                if len(c) == len(names):  # system ABCD
-                    stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
-
-                else:  # system AABB
-
-                    # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
-                    if (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[0], ids[3]]['dist'] and
-                        self.__g.edges[ids[1], ids[2]]['dist'] == self.__g.edges[ids[1], ids[3]]['dist']) or \
-                       (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[1], ids[2]]['dist'] and
-                        self.__g.edges[ids[0], ids[3]]['dist'] - self.__g.edges[ids[1], ids[3]]['dist']):
-                        stereo = 0
-                    else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
-                        if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
-                            ids[2], ids[3] = ids[3], ids[2]
-                            names[2], names[3] = names[3], names[2]
-                        stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
+            # system AAAA or AAAB or AABC is achiral
+            if len(c) == 1 or any(v == 3 for k, v in c.items()) or len(c) == 3:
+                stereo = 0
 
             else:
 
-                if len(c) == len(names):   # system ABCD
-                    stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+                names, ids = self.__sort_two_lists(feature_names, feature_ids)
 
-                else:   # system AABB
+                if self.__nx_version == 2:
 
-                    # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
-                    if (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[0]][ids[3]]['dist'] and
-                        self.__g.edge[ids[1]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[3]]['dist']) or \
-                       (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[2]]['dist'] and
-                        self.__g.edge[ids[0]][ids[3]]['dist'] - self.__g.edge[ids[1]][ids[3]]['dist']):
-                        stereo = 0
-                    else: # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
-                        if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
-                            ids[2], ids[3] = ids[3], ids[2]
-                            names[2], names[3] = names[3], names[2]
+                    if len(c) == len(names):  # system ABCD
+                        stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
+
+                    else:  # system AABB
+
+                        # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
+                        if (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[0], ids[3]]['dist'] and
+                            self.__g.edges[ids[1], ids[2]]['dist'] == self.__g.edges[ids[1], ids[3]]['dist']) or \
+                           (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[1], ids[2]]['dist'] and
+                            self.__g.edges[ids[0], ids[3]]['dist'] - self.__g.edges[ids[1], ids[3]]['dist']):
+                            stereo = 0
+                        else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
+                            if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
+                                ids[2], ids[3] = ids[3], ids[2]
+                                names[2], names[3] = names[3], names[2]
+                            stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
+                            # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
+                            stereo += 10 * sign_dihedral_angle(tuple(self.__g.nodes[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
+
+                else:
+
+                    if len(c) == len(names):   # system ABCD
                         stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+
+                    else:   # system AABB
+
+                        # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
+                        if (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[0]][ids[3]]['dist'] and
+                            self.__g.edge[ids[1]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[3]]['dist']) or \
+                           (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[2]]['dist'] and
+                            self.__g.edge[ids[0]][ids[3]]['dist'] - self.__g.edge[ids[1]][ids[3]]['dist']):
+                            stereo = 0
+                        else: # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
+                            if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
+                                ids[2], ids[3] = ids[3], ids[2]
+                                names[2], names[3] = names[3], names[2]
+                            stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+                            # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
+                            stereo += 10 * sign_dihedral_angle(tuple(self.__g.node[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
 
         return tuple(sorted(feature_names)), stereo
 
@@ -289,6 +319,12 @@ class PharmacophoreBase():
         else:
             return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True) if k in set(ids)]
 
+    def get_mirror_pharmacophore(self):
+        p = Pharmacophore()
+        coords = tuple((label, (-x, y, z)) for label, (x, y, z) in self.get_feature_coords())
+        p.load_from_feature_coords(coords)
+        return p
+
     def update(self, bin_step):
         if bin_step is not None and bin_step != self.__bin_step:
             self.__bin_step = bin_step
@@ -329,8 +365,8 @@ class PharmacophoreBase():
 
 class PharmacophoreMatch(PharmacophoreBase):
 
-    def __init__(self, bin_step=2):
-        super().__init__(bin_step=bin_step)
+    def __init__(self, bin_step=1):
+        super().__init__(bin_step)
         self.__nm = iso.categorical_node_match('label', '_')
         self.__em = iso.numerical_edge_match('dist', 0)
 
@@ -403,8 +439,8 @@ class Pharmacophore(PharmacophoreMatch):
     feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
     feat_dict_mol = {'A': 7, 'P': 2, 'N': 3, 'H': 4, 'D': 5, 'a': 10}
 
-    def __init__(self, bin_step=2):
-        super().__init__(bin_step=bin_step)
+    def __init__(self, bin_step=1):
+        super().__init__(bin_step)
 
     def load_from_smarts(self, mol, smarts):
         features_atom_ids = self._get_features_atom_ids(mol, smarts)
