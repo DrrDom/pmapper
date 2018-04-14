@@ -154,7 +154,7 @@ class PharmacophoreBase():
                                                                        self.__get_canon_feature_signatures(ids=simplex_ids),
                                                                        tol)
                 d[(name, stereo)] += 1
-            return md5(pickle.dumps(tuple(sorted(d.items())))).hexdigest()
+            return md5(pickle.dumps(repr(tuple(sorted(d.items()))))).hexdigest()
 
         ids = self._get_ids(ids)
         if len(set(tuple(coords for (label, coords) in self.get_feature_coords(ids)))) > 3:
