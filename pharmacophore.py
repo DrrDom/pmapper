@@ -10,13 +10,17 @@
 import networkx as nx
 import pickle
 import json
+import numpy as np
 
 from rdkit import Chem
+from rdkit.Chem import Conformer
+from rdkit.Geometry import Point3D
 from collections import Counter, defaultdict
 from itertools import combinations
 from hashlib import md5
 from xml.dom import minidom
 from networkx.algorithms import isomorphism as iso
+from math import sqrt, asin, pi
 
 
 def read_smarts_feature_file(file_name):
@@ -35,7 +39,7 @@ def read_smarts_feature_file(file_name):
     return output
 
 
-def load_multi_conf_mol(mol, smarts_features, factory=None, bin_step=2):
+def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1):
     # factory or smarts_featurs should be None to select only one procedure
     if smarts_features is not None and factory is not None:
         raise Exception("Only one options should be not None (smarts_features or factory)")
@@ -56,7 +60,7 @@ def load_multi_conf_mol(mol, smarts_features, factory=None, bin_step=2):
 
 class PharmacophoreBase():
 
-    def __init__(self, bin_step=2):
+    def __init__(self, bin_step=1):
         self.__g = nx.Graph()
         self.__bin_step = bin_step
         self.__nx_version = int(nx.__version__.split('.')[0])
@@ -77,13 +81,13 @@ class PharmacophoreBase():
             self.__g.add_node(i, label=label, xyz=coords)
         self.__update_dists()
 
-    def __update_dists(self):
+    def __update_dists(self, bin_step=None):
         if self.__nx_version == 2:
             for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz']))
+                self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step))
         else:
             for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz']))
+                self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step))
 
     def __dist(self, coord1, coord2, bin_step=None):
         # coord1, coord2 - tuples of (x, y, z)
@@ -105,8 +109,7 @@ class PharmacophoreBase():
         """
         if ids is not None and feature_labels is not None and len(ids) != len(feature_labels):
             raise Exception('The number of feature ids and labels must be the same')
-        if ids is None:
-            ids = self.__g.nodes()
+        ids = self._get_ids(ids)
         if feature_labels is None:
             feature_labels = tuple(self.__g.node[i]['label'] for i in ids)
         feature_signatures = []
@@ -122,128 +125,124 @@ class PharmacophoreBase():
         return tuple(feature_signatures)
 
     def __get_canon_feature_signatures(self, ids=None, feature_labels=None):
+        ids = self._get_ids(ids)
         f = self.__get_feature_signatures(ids=ids, feature_labels=feature_labels)
-        # f = tuple(self.__get_dense_feature_sign(s) for s in f)
         f = self.__get_feature_signatures(ids=ids, feature_labels=f)
         return f
-
-    # @staticmethod
-    # def __get_dense_feature_sign(feature_signature):
-    #     return ''.join(str(j) for i in feature_signature for j in i)
 
     def _get_ids(self, ids=None):
         if ids is None:
             ids = self.__g.nodes()
-        return tuple(ids)
+        return tuple(sorted(set(ids)))
 
-    def __get_signature(self, ids=None):
+    def __get_graph_signature(self, ids=None):
         ids = self._get_ids(ids)
         return tuple(sorted(self.__get_canon_feature_signatures(ids=ids)))
 
-    def __get_signature_md5(self, ids=None):
-        s = self.__get_signature(ids=ids)
+    def __get_graph_signature_md5(self, ids=None):
+        s = self.__get_graph_signature(ids=ids)
         return md5(pickle.dumps(repr(s)))
 
-    def _get_stereo(self, ids=None, tol=0):
+    def __get_full_hash(self, ids=None, tol=0):
+
+        def calc_full_stereo(ids, tol):
+            d = defaultdict(int)
+            ids = self._get_ids(ids)
+            for comb in combinations(range(len(ids)), 4):
+                simplex_ids = tuple(ids[i] for i in comb)
+                name, stereo = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
+                                                                       self.__get_canon_feature_signatures(ids=simplex_ids),
+                                                                       tol)
+                d[(name, stereo)] += 1
+            return md5(pickle.dumps(repr(tuple(sorted(d.items()))))).hexdigest()
+
         ids = self._get_ids(ids)
-        if len(ids) > 3:
-            # sort to get sorted ids
-            canon_names = self.__get_canon_feature_signatures(ids=ids)
-            canon_names, ids = self.__sort_two_lists(canon_names, ids)
+        if len(set(tuple(coords for (label, coords) in self.get_feature_coords(ids)))) > 3:
+            stereo = calc_full_stereo(ids, tol)
+        else:
+            stereo = self.__get_graph_signature_md5(ids).hexdigest()
+        return stereo
 
-            if len(set(canon_names)) == len(canon_names):
-                # if all points are different sign can be determined by the first four points which are not in one plane
+    def __gen_quadruplet_canon_name_stereo(self, feature_ids, feature_names, tol=0):
+        # return canon quadruplet signature and stereo
+
+        def sign_dihedral_angle(coords):
+            # Alina code
+            b1 = [i1 - i2 for i1, i2 in zip(coords[0], coords[1])]
+            b2 = [i1 - i2 for i1, i2 in zip(coords[1], coords[2])]
+            b3 = [i1 - i2 for i1, i2 in zip(coords[2], coords[3])]
+
+            n1 = ((b1[1]*b2[2] - b1[2]*b2[1]), -(b1[0]*b2[2] - b1[2]*b2[0]), (b1[0]*b2[1] - b1[1]*b2[0])) # normal to plane 1
+            n2 = ((b2[1]*b3[2] - b2[2]*b3[1]), -(b2[0]*b3[2] - b2[2]*b3[0]), (b2[0]*b3[1] - b2[1]*b3[0])) # normal to plane 2
+
+            cos_angle = (n1[0]*n2[0] + n1[1]*n2[1] + n1[2]*n2[2]) / (sqrt(n1[0]*n1[0] + n1[1]*n1[1] + n1[2]*n1[2]) + sqrt(n2[0]*n2[0] + n2[1]*n2[1] + n2[2]*n2[2]))
+
+            if cos_angle > 0:
+                res = 1
+            elif cos_angle < 0:
+                res = -1
+            else:
+                res = 0
+            return res
+
+        # less than 4 unique feature coordinates
+        if len(set(tuple(coords for (label, coords) in self.get_feature_coords(feature_ids)))) < 4:
+
+            stereo = 0
+
+        else:
+
+            c = Counter(feature_names)
+
+            # system AAAA or AAAB or AABC is achiral
+            if len(c) == 1 or any(v == 3 for k, v in c.items()) or len(c) == 3:
                 stereo = 0
-                for comb in combinations(ids, 4):
-                    if self.__nx_version == 2:
-                        s = self.__get_stereo_sign(coord=tuple(self.__g.nodes[i]['xyz'] for i in comb), tol=tol)
-                    else:
-                        s = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in comb), tol=tol)
-                    if s != 0:
-                        stereo = s
-                        break
-            else:
-                stereo = self.__calc_full_stereo(ids, tol)
-
-        else:
-            stereo = 0
-
-        return stereo
-
-    def __calc_full_stereo(self, ids, tol=0):
-        # input features and ids are already sorted by feature names (canon_names)
-
-        # sum stereo of individual simplexes
-        # achiral objects should have all 0 (right and left simplexes should compensate each other)
-        # for chiral objects the stereo is defined by the first non-zero simplex (simplexes are sorted by priority)
-        d = defaultdict(int)
-        for comb in combinations(range(len(ids)), 4):
-            simplex_ids = tuple(ids[i] for i in comb)
-            name, stereo = self.__gen_canon_simplex_name(simplex_ids,
-                                                         self.__get_canon_feature_signatures(simplex_ids),
-                                                         tol)
-            d[name] += stereo
-
-        stereo = 0
-        for k, v in sorted(d.items()):
-            if v > 0:
-                stereo = 1
-                break
-            elif v < 0:
-                stereo = -1
-                break
-        return stereo
-
-    def __gen_canon_simplex_name(self, feature_ids, feature_names, tol=0):
-        # return canon simplex signature and stereo
-
-        c = Counter(feature_names)
-
-        # system AAAA or AAAB or AABC is achiral
-        if len(c) == 1 or any(v == 3 for k, v in c.items()) or len(c) == 3:
-            stereo = 0
-
-        else:
-
-            names, ids = self.__sort_two_lists(feature_names, feature_ids)
-
-            if self.__nx_version == 2:
-
-                if len(c) == len(names):  # system ABCD
-                    stereo = self.__get_stereo_sign(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
-
-                else:  # system AABB
-
-                    # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
-                    if (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[0], ids[3]]['dist'] and
-                        self.__g.edges[ids[1], ids[2]]['dist'] == self.__g.edges[ids[1], ids[3]]['dist']) or \
-                       (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[1], ids[2]]['dist'] and
-                        self.__g.edges[ids[0], ids[3]]['dist'] - self.__g.edges[ids[1], ids[3]]['dist']):
-                        stereo = 0
-                    else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
-                        if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
-                            ids[2], ids[3] = ids[3], ids[2]
-                            names[2], names[3] = names[3], names[2]
-                        stereo = self.__get_stereo_sign(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
 
             else:
 
-                if len(c) == len(names):   # system ABCD
-                    stereo = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+                names, ids = self.__sort_two_lists(feature_names, feature_ids)
 
-                else:   # system AABB
+                if self.__nx_version == 2:
 
-                    # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
-                    if (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[0]][ids[3]]['dist'] and
-                        self.__g.edge[ids[1]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[3]]['dist']) or \
-                       (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[2]]['dist'] and
-                        self.__g.edge[ids[0]][ids[3]]['dist'] - self.__g.edge[ids[1]][ids[3]]['dist']):
-                        stereo = 0
-                    else: # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
-                        if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
-                            ids[2], ids[3] = ids[3], ids[2]
-                            names[2], names[3] = names[3], names[2]
-                        stereo = self.__get_stereo_sign(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+                    if len(c) == len(names):  # system ABCD
+                        stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
+
+                    else:  # system AABB
+
+                        # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
+                        if (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[0], ids[3]]['dist'] and
+                            self.__g.edges[ids[1], ids[2]]['dist'] == self.__g.edges[ids[1], ids[3]]['dist']) or \
+                           (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[1], ids[2]]['dist'] and
+                            self.__g.edges[ids[0], ids[3]]['dist'] - self.__g.edges[ids[1], ids[3]]['dist']):
+                            stereo = 0
+                        else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
+                            if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
+                                ids[2], ids[3] = ids[3], ids[2]
+                                names[2], names[3] = names[3], names[2]
+                            stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
+                            # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
+                            stereo += 10 * sign_dihedral_angle(tuple(self.__g.nodes[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
+
+                else:
+
+                    if len(c) == len(names):   # system ABCD
+                        stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+
+                    else:   # system AABB
+
+                        # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
+                        if (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[0]][ids[3]]['dist'] and
+                            self.__g.edge[ids[1]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[3]]['dist']) or \
+                           (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[2]]['dist'] and
+                            self.__g.edge[ids[0]][ids[3]]['dist'] - self.__g.edge[ids[1]][ids[3]]['dist']):
+                            stereo = 0
+                        else: # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
+                            if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
+                                ids[2], ids[3] = ids[3], ids[2]
+                                names[2], names[3] = names[3], names[2]
+                            stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
+                            # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
+                            stereo += 10 * sign_dihedral_angle(tuple(self.__g.node[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
 
         return tuple(sorted(feature_names)), stereo
 
@@ -254,25 +253,52 @@ class PharmacophoreBase():
         return map(list, zip(*paired_sorted))  # two lists
 
     @staticmethod
-    def __get_stereo_sign(coord, tol=0):
+    def __get_quadruplet_stereo(coord, tol=0):
         # coord - tuple of tuples containing coordinates of four points in a specific order
         # ((x1, y1, z1), (x2, y2, z2), (x3, y3, z3), (x4, y4, z4))
         # triple product is calculated for 1-2, 1-3 and 1-4 vectors
+
+        def get_angles(p, k):
+            # get the angles of the lines which ends in k-point and a plane
+            # p is (4 x 3) numpy array
+            # http://kitchingroup.cheme.cmu.edu/blog/2015/01/18/Equation-of-a-plane-through-three-points/
+            pp = np.delete(p, k, 0)
+            v1 = pp[1] - pp[0]
+            v2 = pp[2] - pp[0]
+            cp = np.cross(v1, v2)
+            d = np.dot(cp, pp[2])
+            dist = (np.dot(cp, p[k]) - d) / sqrt(sum(cp ** 2))  # signed distance to plane
+            return tuple(180 * asin(dist / np.linalg.norm(p[k] - pp[i])) / pi for i in range(3))
+
+        def check_tolerance(p, tol=0):
+            # return True if quadruplet within the tolerance range
+            # look for a minimal angle regardless sign
+            for i in range(4):
+                res = get_angles(np.array(p), i)
+                if any(-tol <= value <= tol for value in res):
+                    return True
+            return False
+            # res = np.array([get_angles(np.array(p), i) for i in range(4)])
+            # return ((-tol <= res) & (res <= tol)).any()
 
         def det(a):
             return (a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2])
                     - a[1][0] * (a[0][1] * a[2][2] - a[2][1] * a[0][2])
                     + a[2][0] * (a[0][1] * a[1][2] - a[1][1] * a[0][2]))
 
-        # calc difference between coord of the first point and all other points
-        b = [[j - coord[0][i] for i, j in enumerate(elm)] for elm in coord[1:]]
-        # calc the signed volume of parallelepiped
-        d = det(b)
-        if d > tol:
-            return 1
-        if d < -tol:
-            return -1
-        return 0
+        if len(set(coord)) < 4 or tol and check_tolerance(coord, tol):
+            return 0
+        else:
+            # calc difference between coord of the first point and all other points
+            b = [[j - coord[0][i] for i, j in enumerate(elm)] for elm in coord[1:]]
+            # calc the signed volume of parallelepiped
+            d = det(b)
+            if d > 0:
+                return 1
+            if d < 0:
+                return -1
+            else:
+                return 0
 
     def get_bin_step(self):
         return self.__bin_step
@@ -284,25 +310,25 @@ class PharmacophoreBase():
         data = self.__g.nodes(data=True)
         return Counter([item[1]['label'] for item in data])
 
-    def get_signature(self):
-        return self.__get_signature()
+    def get_signature_md5(self, ids=None, tol=0):
+        return self.__get_full_hash(ids, tol)
 
-    def get_signature_md5(self):
-        return self.__get_signature_md5().hexdigest()
+    def get_feature_coords(self, ids=None):
+        if ids is None:
+            return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True)]
+        else:
+            return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True) if k in set(ids)]
 
-    def get_signature_md5bin(self):
-        return self.__get_signature_md5().digest()
+    def get_mirror_pharmacophore(self):
+        p = Pharmacophore()
+        coords = tuple((label, (-x, y, z)) for label, (x, y, z) in self.get_feature_coords())
+        p.load_from_feature_coords(coords)
+        return p
 
-    def get_stereo(self, tol=0):
-        return self._get_stereo(tol=tol)
-
-    def get_feature_coords(self):
-        return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True)]
-
-    def update(self, bin_step=None):
+    def update(self, bin_step):
         if bin_step is not None and bin_step != self.__bin_step:
             self.__bin_step = bin_step
-            self.__update_dists()
+            self.__update_dists(bin_step)
 
     def iterate_pharm(self, min_features=1, max_features=None, tol=0, return_feature_ids=True):
         ids = self._get_ids()
@@ -311,18 +337,36 @@ class PharmacophoreBase():
         for n in range(min_features, max_features + 1):
             for comb in combinations(ids, n):
                 if return_feature_ids:
-                    yield self.__get_signature_md5(ids=comb).hexdigest(), \
-                          self._get_stereo(ids=comb, tol=tol), \
-                          comb
+                    yield self.__get_full_hash(ids=comb, tol=tol), comb
                 else:
-                    yield self.__get_signature_md5(ids=comb).hexdigest(), \
-                          self._get_stereo(ids=comb, tol=tol)
+                    yield self.__get_full_hash(ids=comb, tol=tol)
+
+    def iterate_pharm1(self, fix_ids, tol=0, return_feature_ids=True):
+        """
+        take list of feature ids and add one more feature for them to enumerate all possible combinations
+
+        :param fix_ids: list of tuples/lists with feature ids
+        :param tol:
+        :param return_feature_ids:
+        :return:
+        """
+        visited_id_comb = set()
+        for ids in fix_ids:
+            add_ids = set(self.__g.nodes()).difference(ids)
+            for add_id in add_ids:
+                i = tuple(sorted(tuple(ids) + (add_id, )))
+                if i not in visited_id_comb:
+                    visited_id_comb.add(i)
+                    if return_feature_ids:
+                        yield self.__get_full_hash(ids=i, tol=tol), i
+                    else:
+                        yield self.__get_full_hash(ids=i, tol=tol)
 
 
 class PharmacophoreMatch(PharmacophoreBase):
 
-    def __init__(self, bin_step=2):
-        super().__init__(bin_step=bin_step)
+    def __init__(self, bin_step=1):
+        super().__init__(bin_step)
         self.__nm = iso.categorical_node_match('label', '_')
         self.__em = iso.numerical_edge_match('dist', 0)
 
@@ -337,56 +381,66 @@ class PharmacophoreMatch(PharmacophoreBase):
         self.__nm = iso.categorical_node_match('label', '_')
         self.__em = iso.numerical_edge_match('dist', 0)
 
-    def __fit_graph(self, g):
-        # return generator over mapping
+    def __fit_graph(self, model):
         if self.get_bin_step() != 0:
-            gm = iso.GraphMatcher(self._PharmacophoreBase__g, g, node_match=self.__nm, edge_match=self.__em)
+            gm = iso.GraphMatcher(self._PharmacophoreBase__g, model, node_match=self.__nm, edge_match=self.__em)
         else:
-            gm = iso.GraphMatcher(self._PharmacophoreBase__g, g, node_match=self.__nm, edge_match=iso.numerical_edge_match('dist', 0, atol=0.75))
-        return gm.subgraph_isomorphisms_iter()
+            gm = iso.GraphMatcher(self._PharmacophoreBase__g, model, node_match=self.__nm, edge_match=iso.numerical_edge_match('dist', 0, atol=0.75))
+        return gm
 
-    def fit_model(self, target, n_omitted=0, essential_features=None, tol=0):
+    def fit_model(self, model, n_omitted=0, essential_features=None, tol=0):
         """
         target is a target pharmacophore model which is used for matching (it should be a subgraph of the current
             pharmacophore graph).
         n_omitted is a number of possible simultaneously omitted features in target pharmacophore.
         essential_features is a list of ids of features which will not be omitted in target pharmacophore,
-            not mentioned features will be omitted iteratively (optional features).
+            not mentioned features can be omitted iteratively (optional features).
             Default: None - means all features are optional.
-        polar_only if True then only polar features of target pharmacophore will be used for matching.
+        tol: tolerance when define stereoconfiguration (flat quadruplets)
 
         return: tuple of feature ids of a target (query) model fit to the current pharmacophore
         """
 
-        if self.get_bin_step() != target.get_bin_step():
+        if self.get_bin_step() != model.get_bin_step():
             raise ValueError('bin_steps in both pharmacophores are different, %f and %f' %
-                             (self.get_bin_step(), target.get_bin_step()))
+                             (self.get_bin_step(), model.get_bin_step()))
 
-        ids = set(target._get_ids())
+        ids = set(model._get_ids())
         if essential_features:
-            ids = ids.union(essential_features)
+            if not ids.issuperset(essential_features):
+                raise Exception('bin_steps in both pharmacophores are different, %f and %f' %
+                                (self.get_bin_step(), model.get_bin_step()))
             optional_features = ids.difference(essential_features)
         else:
             optional_features = ids
 
-        if not n_omitted:
-            target_stereo = target.get_stereo(tol=tol)
-            for mapping in self.__fit_graph(target.get_graph().subgraph(ids)):
-                if self._get_stereo(ids=tuple(mapping.keys())) == target_stereo:
-                    return tuple(mapping.keys())
-        else:
+        # check first for graph isomorphism, if yes iteratively evaluate hashes and compare with reference
+        if n_omitted:
             for n in range(1, n_omitted + 1):
                 for i in combinations(optional_features, n):
-                    for mapping in self.__fit_graph(target.get_graph().subgraph(ids.difference(i))):
-                        if self._get_stereo(ids=tuple(mapping.keys())) == target._get_stereo(ids=tuple(ids.difference(i))):
-                            return tuple(ids.difference(i))
+                    gm = self.__fit_graph(model._PharmacophoreBase__g.subgraph(ids.difference(i)))
+                    for j, mapping in enumerate(gm.subgraph_isomorphisms_iter()):
+                        if j == 0:
+                            ref = model.get_signature_md5(ids=tuple(mapping.values()), tol=tol)
+                        if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
+                            return tuple(mapping.values())
+        else:
+            gm = self.__fit_graph(model._PharmacophoreBase__g)
+            for j, mapping in enumerate(gm.subgraph_isomorphisms_iter()):
+                if j == 0:
+                    ref = model.get_signature_md5(tol=tol)
+                if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
+                    return tuple(ids)
         return None
 
 
 class Pharmacophore(PharmacophoreMatch):
 
-    def __init__(self, bin_step=2):
-        super().__init__(bin_step=bin_step)
+    feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
+    feat_dict_mol = {'A': 7, 'P': 2, 'N': 3, 'H': 4, 'D': 5, 'a': 10}
+
+    def __init__(self, bin_step=1):
+        super().__init__(bin_step)
 
     def load_from_smarts(self, mol, smarts):
         features_atom_ids = self._get_features_atom_ids(mol, smarts)
@@ -527,17 +581,63 @@ class Pharmacophore(PharmacophoreMatch):
 
         self.load_from_feature_coords(coord)
 
-    def save_to_pma(self, fname, feature_ids=None):
+    def save_ls_model(self, fname, name="pmapper_pharmcophore"):
         coords = self.get_feature_coords()
-        if feature_ids:
-            coords = [v for i, v in coords if i in feature_ids]
+        doc = minidom.Document()
+        root = doc.createElement('pharmacophore')
+        root.setAttribute('name', name)
+        root.setAttribute('pharmacophoreType', 'LIGAND_SCOUT')
+        doc.appendChild(root)
+        for i, feature in enumerate(coords):
+            if feature[0] in self.feat_dict_ls:
+                if feature[0] != "a":
+                    point = doc.createElement('point')
+                else:
+                    point = doc.createElement('plane')
+                point.setAttribute('name', self.feat_dict_ls[feature[0]])
+                point.setAttribute('featureId', str(i))
+                point.setAttribute('optional', 'false')
+                point.setAttribute('disabled', 'false')
+                point.setAttribute('weight', '1.0')
+                point.setAttribute('id', 'feature' + str(i))
+                root.appendChild(point)
+                position = doc.createElement('position')
+                for k, j in zip(['x3', 'y3', 'z3'], feature[1]):
+                    position.setAttribute(k, str(j))
+                position.setAttribute('tolerance', '1')
+                point.appendChild(position)
+                if feature[0] == "a":
+                    normal = doc.createElement('normal')
+                    normal.setAttribute('x3', '1')
+                    normal.setAttribute('y3', '1')
+                    normal.setAttribute('z3', '1')
+                    normal.setAttribute('tolerance', '0.5')
+                    point.appendChild(normal)
+
+        with open(fname, 'w') as f:
+            f.write(doc.toprettyxml(indent="  "))
+
+    def save_to_pma(self, fname, feature_ids=None):
+        coords = self.get_feature_coords(feature_ids)
         obj = {'bin_step': self.get_bin_step(), 'feature_coords': coords}
         with open(fname, 'wt') as f:
             f.write(json.dumps(obj))
 
     def load_from_pma(self, fname):
-        with open(fname)as f:
+        with open(fname) as f:
             d = json.loads(f.readline().strip())
             feature_coords = tuple((feature[0], tuple(feature[1])) for feature in d['feature_coords'])
             self.load_from_feature_coords(feature_coords)
             self.update(d['bin_step'])
+
+    def get_mol(self):
+        pmol = Chem.RWMol()
+        all_coords = self.get_feature_coords()
+        for item in all_coords:
+            a = Chem.Atom(self.feat_dict_mol[item[0]])
+            pmol.AddAtom(a)
+        c = Conformer(len(all_coords))
+        for i, coords in enumerate(all_coords):
+            c.SetAtomPosition(i, Point3D(*coords[1]))
+        pmol.AddConformer(c, True)
+        return pmol
