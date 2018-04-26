@@ -362,6 +362,12 @@ class PharmacophoreBase():
                     else:
                         yield self.__get_full_hash(ids=i, tol=tol)
 
+    def get_fp_on_bits(self, min_features=3, max_features=3, tol=0, nbits=2048):
+        output = set()
+        for h in self.iterate_pharm(min_features, max_features, tol, False):
+            output.add(int(h, 16) % nbits)
+        return output
+
 
 class PharmacophoreMatch(PharmacophoreBase):
 
