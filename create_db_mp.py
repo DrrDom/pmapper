@@ -124,20 +124,9 @@ def process_mol(mol, mol_name, smarts, bin_step, store_coords, multiconf, tolera
         return [(mol_name, hash, coords, fp_bin)]
 
 
-def pool_init(fdef_fname, bin_step):
+def pool_init(fdef_fname):
     global process_factory
-    global sig_factory
     process_factory = ChemicalFeatures.BuildFeatureFactory(fdef_fname) if fdef_fname else None
-    sig_factory = SigFactory(process_factory, minPointCount=2, maxPointCount=3, trianglePruneBins=False)
-    q = []
-    i = bin_step
-    j = 0
-    while i < 20:
-        q.append((j, i))
-        j = i
-        i += bin_step
-    sig_factory.SetBins(q)
-    sig_factory.Init()
 
 
 def main_params(conformers_fname, out_fname, dbout_fname, bin_step, rewrite_db, store_coords, id_field_name, stereo_id,
@@ -174,7 +163,7 @@ def main_params(conformers_fname, out_fname, dbout_fname, bin_step, rewrite_db, 
     nprocess = max(min(ncpu, cpu_count()), 1)
 
     if rdkit_factory:
-        p = Pool(nprocess, initializer=pool_init, initargs=[rdkit_factory, bin_step])
+        p = Pool(nprocess, initializer=pool_init, initargs=[rdkit_factory])
     else:
         p = Pool(nprocess)
 
