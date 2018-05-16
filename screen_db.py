@@ -33,6 +33,7 @@ from pharmacophore import Pharmacophore
 def compare_fp(query_fp, fp):
     return (query_fp & fp) == query_fp
 
+
 def save_result_of_screen(database, queries_path, file_ts, bin_step, out_path, n_omit):
     start_time = time.time()
 
@@ -137,6 +138,7 @@ def main(db_fname, query_fname, out_fname, verbose):
                         out_f.write(res_string)
                     else:
                         sys.stdout.write(res_string)
+                    break  # match the first conformer
 
 
 if __name__ == '__main__':
