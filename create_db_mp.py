@@ -109,7 +109,7 @@ def process_mol(mol, mol_name, smarts, bin_step, store_coords, multiconf, tolera
         for p in ps:
             coords = p.get_feature_coords() if store_coords else None
             hash = p.get_signature_md5(tol=tolerance) if not nohash else None
-            fp_bin = marshal.dumps(p.get_fp_on_bits()) if fp else None
+            fp_bin = marshal.dumps(p.get_fp()) if fp else None
             output.append((mol_name, hash, coords, fp_bin))
         return output
     else:
@@ -120,7 +120,7 @@ def process_mol(mol, mol_name, smarts, bin_step, store_coords, multiconf, tolera
             p.load_from_smarts(mol, smarts)
         coords = p.get_feature_coords() if store_coords else None
         hash = p.get_signature_md5(tol=tolerance) if not nohash else None
-        fp_bin = marshal.dumps(p.get_fp_on_bits()) if fp else None
+        fp_bin = marshal.dumps(p.get_fp()) if fp else None
         return [(mol_name, hash, coords, fp_bin)]
 
 

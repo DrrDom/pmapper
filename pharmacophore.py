@@ -363,7 +363,7 @@ class PharmacophoreBase():
                     else:
                         yield self.__get_full_hash(ids=i, tol=tol)
 
-    def get_fp_on_bits(self, min_features=3, max_features=3, tol=0, nbits=2048, activate_bits=1):
+    def get_fp(self, min_features=3, max_features=3, tol=0, nbits=2048, activate_bits=1):
         output = set()
         for h in self.iterate_pharm(min_features, max_features, tol, False):
             random.seed(int(h, 16))
