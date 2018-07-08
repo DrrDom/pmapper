@@ -11,6 +11,7 @@ import networkx as nx
 import pickle
 import json
 import numpy as np
+import random
 
 from rdkit import Chem
 from rdkit.Chem import Conformer
@@ -362,10 +363,12 @@ class PharmacophoreBase():
                     else:
                         yield self.__get_full_hash(ids=i, tol=tol)
 
-    def get_fp_on_bits(self, min_features=3, max_features=3, tol=0, nbits=2048):
+    def get_fp_on_bits(self, min_features=3, max_features=3, tol=0, nbits=2048, activate_bits=1):
         output = set()
         for h in self.iterate_pharm(min_features, max_features, tol, False):
-            output.add(int(h, 16) % nbits)
+            random.seed(int(h, 16))
+            for i in range(activate_bits):
+                output.add(random.randrange(nbits))
         return output
 
 
