@@ -188,7 +188,7 @@ def main_params(conformers_fname, out_fname, dbout_fname, bin_step, rewrite_db, 
                 sys.stderr.flush()
 
         if dbout_fname is not None:
-            compress_db(cur, store_coords)
+            # compress_db(cur, store_coords)
             conn.commit()
 
     finally:
