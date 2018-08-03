@@ -69,6 +69,7 @@ def compress_db(cursor, store_coords):
     if store_coords:
         cursor.execute("DELETE FROM feature_coords WHERE conf_id NOT IN (SELECT conf_id "
                        "FROM conformers)")
+    cursor.execute("VACUUM")
 
 
 def insert_res_txt(f, res, lines_set, stereo_id):
@@ -109,7 +110,7 @@ def process_mol(mol, mol_name, smarts, bin_step, store_coords, multiconf, tolera
         for p in ps:
             coords = p.get_feature_coords() if store_coords else None
             hash = p.get_signature_md5(tol=tolerance) if not nohash else None
-            fp_bin = marshal.dumps(p.get_fp()) if fp else None
+            fp_bin = marshal.dumps(p.get_fp(tol=tolerance)) if fp else None
             output.append((mol_name, hash, coords, fp_bin))
         return output
     else:
@@ -120,7 +121,7 @@ def process_mol(mol, mol_name, smarts, bin_step, store_coords, multiconf, tolera
             p.load_from_smarts(mol, smarts)
         coords = p.get_feature_coords() if store_coords else None
         hash = p.get_signature_md5(tol=tolerance) if not nohash else None
-        fp_bin = marshal.dumps(p.get_fp()) if fp else None
+        fp_bin = marshal.dumps(p.get_fp(tol=tolerance)) if fp else None
         return [(mol_name, hash, coords, fp_bin)]
 
 
@@ -187,7 +188,7 @@ def main_params(conformers_fname, out_fname, dbout_fname, bin_step, rewrite_db, 
                 sys.stderr.flush()
 
         if dbout_fname is not None:
-            # compress_db(cur, store_coords)
+            compress_db(cur, store_coords)
             conn.commit()
 
     finally:
