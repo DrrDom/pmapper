@@ -124,10 +124,13 @@ class PharmacophoreBase():
             feature_signatures.append((feature_labels[num_i],) + tuple(sorted(sign)))
         return tuple(feature_signatures)
 
-    def __get_canon_feature_signatures(self, ids=None, feature_labels=None):
+    def __get_canon_feature_signatures(self, ids=None, feature_labels=None, short_version=False):
         ids = self._get_ids(ids)
         f = self.__get_feature_signatures(ids=ids, feature_labels=feature_labels)
-        f = self.__get_feature_signatures(ids=ids, feature_labels=f)
+        # the second iteration is reasonable to use for 5 and more point graphs
+        # for 4-point graph 1 iteration is enough
+        if not short_version:
+            f = self.__get_feature_signatures(ids=ids, feature_labels=f)
         return f
 
     def _get_ids(self, ids=None):
@@ -151,7 +154,7 @@ class PharmacophoreBase():
             for comb in combinations(range(len(ids)), 4):
                 simplex_ids = tuple(ids[i] for i in comb)
                 name, stereo = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
-                                                                       self.__get_canon_feature_signatures(ids=simplex_ids),
+                                                                       self.__get_canon_feature_signatures(ids=simplex_ids, short_version=True),
                                                                        tol)
                 d[(name, stereo)] += 1
             return md5(pickle.dumps(repr(tuple(sorted(d.items()))))).hexdigest()
