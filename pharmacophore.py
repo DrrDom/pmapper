@@ -11,12 +11,13 @@ import networkx as nx
 import pickle
 import json
 import numpy as np
+import random
 
 from rdkit import Chem
 from rdkit.Chem import Conformer
 from rdkit.Geometry import Point3D
 from collections import Counter, defaultdict
-from itertools import combinations
+from itertools import combinations, product
 from hashlib import md5
 from xml.dom import minidom
 from networkx.algorithms import isomorphism as iso
@@ -365,10 +366,24 @@ class PharmacophoreBase():
                     else:
                         yield self.__get_full_hash(ids=i, tol=tol)
 
-    def get_fp_on_bits(self, min_features=3, max_features=3, tol=0, nbits=2048):
+    def get_fp(self, min_features=3, max_features=3, tol=0, nbits=2048, activate_bits=1):
         output = set()
         for h in self.iterate_pharm(min_features, max_features, tol, False):
-            output.add(int(h, 16) % nbits)
+            random.seed(int(h, 16))
+            for i in range(activate_bits):
+                output.add(random.randrange(nbits))
+        return output
+
+    def get_fp2(self, min_features=3, max_features=3, tol=(0, ), nbits=(2048, ), activate_bits=(1, )):
+        # return dict of {(nbits, activate_bits): {bit set}, ...}
+        output = defaultdict(set)
+        for tol_ in tol:
+            for h in self.iterate_pharm(min_features, max_features, tol_, False):
+                seed = int(h, 16)
+                for nbits_, act_bits_ in product(nbits, activate_bits):
+                    random.seed(seed)
+                    for i in range(act_bits_):
+                        output[(nbits_, act_bits_, tol_)].add(random.randrange(nbits_))
         return output
 
 

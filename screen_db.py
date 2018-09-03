@@ -91,7 +91,7 @@ def main(db_fname, query_fname, out_fname, verbose):
     # load query
     q = Pharmacophore()
     q.load_from_pma(query_fname)
-    q_fp = q.get_fp_on_bits()
+    q_fp = q.get_fp()
 
     conn = lite.connect(db_fname)
     cur = conn.cursor()
