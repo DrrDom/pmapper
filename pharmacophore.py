@@ -440,15 +440,17 @@ class PharmacophoreMatch(PharmacophoreMol):
 
     def fit_model(self, model, n_omitted=0, essential_features=None, tol=0, get_transform_matrix=False):
         """
-        target is a target pharmacophore model which is used for matching (it should be a subgraph of the current
+        model: a pharmacophore model which is used for matching (it should be a subgraph of the current
             pharmacophore graph).
-        n_omitted is a number of possible simultaneously omitted features in target pharmacophore.
-        essential_features is a list of ids of features which will not be omitted in target pharmacophore,
+        n_omitted: a number of simultaneously omitted features in a model pharmacophore
+        essential_features: a list of ids of features which will not be omitted in a model pharmacophore,
             not mentioned features can be omitted iteratively (optional features).
             Default: None - means all features are optional.
-        tol: tolerance when define stereoconfiguration (flat quadruplets)
+        tol: tolerance when define stereoconfiguration
+        get_transform_matrix: if set, the function will return a transformation matrix as an additional output
 
-        return: tuple of feature ids of a target (query) model fit to the current pharmacophore
+        return: tuple of feature ids of a target (query) model fit to the current pharmacophore, additionally a
+            transformation matrix can be returned
         """
 
         if self.get_bin_step() != model.get_bin_step():
