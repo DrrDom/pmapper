@@ -14,7 +14,7 @@ import numpy as np
 import random
 
 from rdkit import Chem
-from rdkit.Chem import Conformer
+from rdkit.Chem import Conformer, rdMolAlign
 from rdkit.Geometry import Point3D
 from collections import Counter, defaultdict
 from itertools import combinations, product
@@ -387,7 +387,30 @@ class PharmacophoreBase():
         return output
 
 
-class PharmacophoreMatch(PharmacophoreBase):
+class PharmacophoreMol(PharmacophoreBase):
+
+    feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10}
+
+    def __init__(self, bin_step=1):
+        super().__init__(bin_step)
+
+    def get_mol(self, p_obj=None):
+        pmol = Chem.RWMol()
+        if p_obj is None:
+            all_coords = self.get_feature_coords()
+        else:
+            all_coords = p_obj.get_feature_coords()
+        for item in all_coords:
+            a = Chem.Atom(self.feat_dict_mol[item[0]])
+            pmol.AddAtom(a)
+        c = Conformer(len(all_coords))
+        for i, coords in enumerate(all_coords):
+            c.SetAtomPosition(i, Point3D(*coords[1]))
+        pmol.AddConformer(c, True)
+        return pmol
+
+
+class PharmacophoreMatch(PharmacophoreMol):
 
     def __init__(self, bin_step=1):
         super().__init__(bin_step)
@@ -405,6 +428,9 @@ class PharmacophoreMatch(PharmacophoreBase):
         self.__nm = iso.categorical_node_match('label', '_')
         self.__em = iso.numerical_edge_match('dist', 0)
 
+    def __get_transformation_matrix(self, model, mapping):
+        return rdMolAlign.GetAlignmentTransform(self.get_mol(), self.get_mol(model), atomMap=tuple(mapping.items()))[1]
+
     def __fit_graph(self, model):
         if self.get_bin_step() != 0:
             gm = iso.GraphMatcher(self._PharmacophoreBase__g, model, node_match=self.__nm, edge_match=self.__em)
@@ -412,7 +438,7 @@ class PharmacophoreMatch(PharmacophoreBase):
             gm = iso.GraphMatcher(self._PharmacophoreBase__g, model, node_match=self.__nm, edge_match=iso.numerical_edge_match('dist', 0, atol=0.75))
         return gm
 
-    def fit_model(self, model, n_omitted=0, essential_features=None, tol=0):
+    def fit_model(self, model, n_omitted=0, essential_features=None, tol=0, get_transform_matrix=False):
         """
         target is a target pharmacophore model which is used for matching (it should be a subgraph of the current
             pharmacophore graph).
@@ -447,24 +473,26 @@ class PharmacophoreMatch(PharmacophoreBase):
                         if j == 0:
                             ref = model.get_signature_md5(ids=tuple(mapping.values()), tol=tol)
                         if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
-                            return tuple(mapping.values())
+                            if get_transform_matrix:
+                                return tuple(mapping.values()), self.__get_transformation_matrix(model, mapping)
+                            else:
+                                return tuple(mapping.values())
         else:
             gm = self.__fit_graph(model._PharmacophoreBase__g)
             for j, mapping in enumerate(gm.subgraph_isomorphisms_iter()):
                 if j == 0:
                     ref = model.get_signature_md5(tol=tol)
                 if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
-                    return tuple(ids)
+                    if get_transform_matrix:
+                        return tuple(ids), self.__get_transformation_matrix(model, mapping)
+                    else:
+                        return tuple(ids)
         return None
 
 
 class Pharmacophore(PharmacophoreMatch):
 
     feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
-    feat_dict_mol = {'A': 7, 'P': 2, 'N': 3, 'H': 4, 'D': 5, 'a': 10}
-
-    def __init__(self, bin_step=1):
-        super().__init__(bin_step)
 
     def load_from_smarts(self, mol, smarts):
         features_atom_ids = self._get_features_atom_ids(mol, smarts)
@@ -654,14 +682,3 @@ class Pharmacophore(PharmacophoreMatch):
             self.load_from_feature_coords(feature_coords)
             self.update(d['bin_step'])
 
-    def get_mol(self):
-        pmol = Chem.RWMol()
-        all_coords = self.get_feature_coords()
-        for item in all_coords:
-            a = Chem.Atom(self.feat_dict_mol[item[0]])
-            pmol.AddAtom(a)
-        c = Conformer(len(all_coords))
-        for i, coords in enumerate(all_coords):
-            c.SetAtomPosition(i, Point3D(*coords[1]))
-        pmol.AddConformer(c, True)
-        return pmol
