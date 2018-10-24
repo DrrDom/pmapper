@@ -389,7 +389,7 @@ class PharmacophoreBase():
 
 class PharmacophoreMol(PharmacophoreBase):
 
-    feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10}
+    __feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10}
 
     def __init__(self, bin_step=1):
         super().__init__(bin_step)
@@ -401,7 +401,7 @@ class PharmacophoreMol(PharmacophoreBase):
         else:
             all_coords = p_obj.get_feature_coords()
         for item in all_coords:
-            a = Chem.Atom(self.feat_dict_mol[item[0]])
+            a = Chem.Atom(self.__feat_dict_mol[item[0]])
             pmol.AddAtom(a)
         c = Conformer(len(all_coords))
         for i, coords in enumerate(all_coords):
@@ -494,7 +494,7 @@ class PharmacophoreMatch(PharmacophoreMol):
 
 class Pharmacophore(PharmacophoreMatch):
 
-    feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
+    __feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
 
     def load_from_smarts(self, mol, smarts):
         features_atom_ids = self._get_features_atom_ids(mol, smarts)
@@ -643,12 +643,12 @@ class Pharmacophore(PharmacophoreMatch):
         root.setAttribute('pharmacophoreType', 'LIGAND_SCOUT')
         doc.appendChild(root)
         for i, feature in enumerate(coords):
-            if feature[0] in self.feat_dict_ls:
+            if feature[0] in self.__feat_dict_ls:
                 if feature[0] != "a":
                     point = doc.createElement('point')
                 else:
                     point = doc.createElement('plane')
-                point.setAttribute('name', self.feat_dict_ls[feature[0]])
+                point.setAttribute('name', self.__feat_dict_ls[feature[0]])
                 point.setAttribute('featureId', str(i))
                 point.setAttribute('optional', 'false')
                 point.setAttribute('disabled', 'false')
