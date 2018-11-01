@@ -12,3 +12,5 @@ rank.py
 readme_test.py
 screen_fp.py
 test_canon_iters.py
+screen_db.py
+read_input.py
