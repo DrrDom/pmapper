@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # author          : Pavel
 # date            : 30.05.16
-# version         : 0.1
-# python_version  : 3
-# copyright       : Pavel 2016
-# license         : GPL3
+# license         : BSD-3
 #==============================================================================
 
 import networkx as nx
