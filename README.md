@@ -5,7 +5,7 @@ Signatures uniquely encode 3D pharmacophores with hashes suitable for fast ident
 
 ## Dependency
 
-`rdkit >= 2017.09`
+`rdkit >= 2017.09`  
 `networkx >= 1.11`
 
 ## Examples
@@ -118,8 +118,40 @@ p.load_from_pma('filename.pma')
 ### Support LigandScout pml-files
 LigandScout models saved as pml-files can be read using `p.load_ls_model`. Also a pharmacophore can be stored in this format in order to export to LigandScout (`p.save_ls_model`).
 
+## Speed tests
+The computation speed of pharmacophore signatures depends on the number of features in pharmacophores.  
+Tests were run on 500 compounds (a random subset from Drugbank). Up to 50 conformers were generated for each compound. Up to 100 pharmacophores having a particular number of features were chosen randomly from the whole number of 25000 pharmacophores to generate pharmacophore signatures.  
+```
+pharmacophore generation: 19.21 s
+total number of pharmacophores: 25000
+
+pharmacophore hash generation:
+50 pharmacophores having 2 features: 0.00 s; time per pharmacophore: 0.00000 s
+100 pharmacophores having 3 features: 0.01 s; time per pharmacophore: 0.00010 s
+100 pharmacophores having 4 features: 0.01 s; time per pharmacophore: 0.00010 s
+100 pharmacophores having 5 features: 0.04 s; time per pharmacophore: 0.00040 s
+100 pharmacophores having 6 features: 0.12 s; time per pharmacophore: 0.00120 s
+100 pharmacophores having 7 features: 0.24 s; time per pharmacophore: 0.00240 s
+100 pharmacophores having 8 features: 0.51 s; time per pharmacophore: 0.00510 s
+100 pharmacophores having 9 features: 0.94 s; time per pharmacophore: 0.00940 s
+100 pharmacophores having 10 features: 1.86 s; time per pharmacophore: 0.01860 s
+100 pharmacophores having 11 features: 3.02 s; time per pharmacophore: 0.03020 s
+100 pharmacophores having 12 features: 4.17 s; time per pharmacophore: 0.04170 s
+100 pharmacophores having 13 features: 7.04 s; time per pharmacophore: 0.07040 s
+100 pharmacophores having 14 features: 9.29 s; time per pharmacophore: 0.09290 s
+100 pharmacophores having 15 features: 12.94 s; time per pharmacophore: 0.12940 s
+100 pharmacophores having 16 features: 17.79 s; time per pharmacophore: 0.17790 s
+100 pharmacophores having 17 features: 23.58 s; time per pharmacophore: 0.23580 s
+100 pharmacophores having 18 features: 33.83 s; time per pharmacophore: 0.33830 s
+100 pharmacophores having 19 features: 40.43 s; time per pharmacophore: 0.40430 s
+100 pharmacophores having 20 features: 58.30 s; time per pharmacophore: 0.58300 s
+```
+
 ## Citation
-...
+Ligand-Based Pharmacophore Modeling Using Novel 3D Pharmacophore Signatures  
+Alina Kutlushina, Aigul Khakimova, Timur Madzhidov, Pavel Polishchuk  
+*Molecules* **2018**, 23(12), 3094  
+https://doi.org/10.3390/molecules23123094
 
 ## License
 BSD-3 clause
