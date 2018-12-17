@@ -119,8 +119,12 @@ p.load_from_pma('filename.pma')
 LigandScout models saved as pml-files can be read using `p.load_ls_model`. Also a pharmacophore can be stored in this format in order to export to LigandScout (`p.save_ls_model`).
 
 ## Speed tests
-The computation speed of pharmacophore signatures depends on the number of features in pharmacophores.  
+Generation of pharmacopohre signatures (hashes) is a CPU-bound task. The computation speed depends on the number of features in pharmacophores.  
 Tests were run on 500 compounds (a random subset from Drugbank). Up to 50 conformers were generated for each compound. Up to 100 pharmacophores having a particular number of features were chosen randomly from the whole number of 25000 pharmacophores to generate pharmacophore signatures.  
+Laptop configuration:
+- Intel(R) Core(TM) i7-5500U CPU @ 2.40GHz
+- 12 GB RAM
+- calculation was run in 1 thread (the module is thread safe and calculations can be parallelized)
 ```
 pharmacophore generation: 19.21 s
 total number of pharmacophores: 25000
