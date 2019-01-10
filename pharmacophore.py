@@ -345,6 +345,8 @@ class PharmacophoreBase():
         ids = self._get_ids()
         if max_features is None:
             max_features = len(self.__g.nodes())
+        else:
+            max_features = min(max_features, len(self.__g.nodes()))
         for n in range(min_features, max_features + 1):
             for comb in combinations(ids, n):
                 if return_feature_ids:
