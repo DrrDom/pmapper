@@ -37,12 +37,12 @@ def read_smarts_feature_file(file_name):
     return output
 
 
-def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1):
+def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cached=False):
     # factory or smarts_featurs should be None to select only one procedure
     if smarts_features is not None and factory is not None:
         raise Exception("Only one options should be not None (smarts_features or factory)")
     output = []
-    p = Pharmacophore(bin_step)
+    p = Pharmacophore(bin_step, cached)
     if smarts_features is not None:
         ids = p._get_features_atom_ids(mol, smarts_features)
     elif factory is not None:
@@ -50,7 +50,7 @@ def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1):
     else:
         return output
     for conf in mol.GetConformers():
-        p = Pharmacophore(bin_step)
+        p = Pharmacophore(bin_step, cached)
         p.load_from_atom_ids(mol, ids, conf.GetId())
         output.append(p)
     return output
@@ -58,9 +58,11 @@ def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1):
 
 class PharmacophoreBase():
 
-    def __init__(self, bin_step=1):
+    def __init__(self, bin_step=1, cached=False):
         self.__g = nx.Graph()
         self.__bin_step = bin_step
+        self.__cached = cached
+        self.__cache = dict()
         self.__nx_version = int(nx.__version__.split('.')[0])
 
     @staticmethod
@@ -150,18 +152,24 @@ class PharmacophoreBase():
             d = defaultdict(int)
             ids = self._get_ids(ids)
             for comb in combinations(range(len(ids)), 4):
-                simplex_ids = tuple(ids[i] for i in comb)
-                name, stereo = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
-                                                                       self.__get_canon_feature_signatures(ids=simplex_ids, short_version=True),
-                                                                       tol)
-                d[(name, stereo)] += 1
+                simplex_ids = tuple(sorted(ids[i] for i in comb))
+                if self.__cached:
+                    try:
+                        res = self.__cache[simplex_ids]
+                    except KeyError:
+                        res = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
+                                                                      self.__get_canon_feature_signatures(ids=simplex_ids, short_version=True),
+                                                                      tol)
+                        self.__cache[simplex_ids] = res
+                else:
+                    res = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
+                                                                  self.__get_canon_feature_signatures(ids=simplex_ids, short_version=True),
+                                                                  tol)
+                d[res] += 1
             return md5(pickle.dumps(repr(tuple(sorted(d.items()))))).hexdigest()
 
         ids = self._get_ids(ids)
-        if len(set(tuple(coords for (label, coords) in self.get_feature_coords(ids)))) > 3:
-            stereo = calc_full_stereo(ids, tol)
-        else:
-            stereo = self.__get_graph_signature_md5(ids).hexdigest()
+        stereo = calc_full_stereo(ids, tol)
         return stereo
 
     def __gen_quadruplet_canon_name_stereo(self, feature_ids, feature_names, tol=0):
@@ -326,10 +334,12 @@ class PharmacophoreBase():
         p.load_from_feature_coords(coords)
         return p
 
-    def update(self, bin_step):
+    def update(self, bin_step=None, cached=None):
         if bin_step is not None and bin_step != self.__bin_step:
             self.__bin_step = bin_step
             self.__update_dists(bin_step)
+        if cached is not None:
+            self.__cached = cached
 
     def iterate_pharm(self, min_features=1, max_features=None, tol=0, return_feature_ids=True):
         ids = self._get_ids()
@@ -388,8 +398,8 @@ class PharmacophoreMol(PharmacophoreBase):
 
     __feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10}
 
-    def __init__(self, bin_step=1):
-        super().__init__(bin_step)
+    def __init__(self, bin_step=1, cached=False):
+        super().__init__(bin_step, cached)
 
     def get_mol(self, p_obj=None):
         pmol = Chem.RWMol()
@@ -409,8 +419,8 @@ class PharmacophoreMol(PharmacophoreBase):
 
 class PharmacophoreMatch(PharmacophoreMol):
 
-    def __init__(self, bin_step=1):
-        super().__init__(bin_step)
+    def __init__(self, bin_step=1, cached=False):
+        super().__init__(bin_step, cached)
         self.__nm = iso.categorical_node_match('label', '_')
         self.__em = iso.numerical_edge_match('dist', 0)
 
