@@ -171,7 +171,6 @@ class PharmacophoreBase():
 
         def calc_full_stereo(ids, tol):
             d = defaultdict(int)
-            ids = self._get_ids(ids)
             for qudruplet_ids in combinations(ids, min(len(ids), 4)):
                 if self.__cached:
                     try:
@@ -182,7 +181,7 @@ class PharmacophoreBase():
                 else:
                     res = self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol)
                 d[res] += 1
-            return md5(pickle.dumps(repr(tuple(sorted(d.items()))))).hexdigest()
+            return md5(pickle.dumps(str(tuple(sorted(d.items()))))).hexdigest()
 
         ids = self._get_ids(ids)
         stereo = calc_full_stereo(ids, tol)
