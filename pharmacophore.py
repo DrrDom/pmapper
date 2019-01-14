@@ -176,10 +176,10 @@ class PharmacophoreBase():
                     try:
                         res = self.__cache[qudruplet_ids]
                     except KeyError:
-                        res = self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol)
+                        res = str(self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol))
                         self.__cache[qudruplet_ids] = res
                 else:
-                    res = self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol)
+                    res = str(self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol))
                 d[res] += 1
             return md5(pickle.dumps(str(tuple(sorted(d.items()))))).hexdigest()
 
