@@ -13,8 +13,8 @@ import random
 from rdkit import Chem
 from rdkit.Chem import Conformer, rdMolAlign
 from rdkit.Geometry import Point3D
-from collections import Counter, defaultdict
-from itertools import combinations, product
+from collections import Counter, defaultdict, OrderedDict
+from itertools import combinations, product, permutations
 from hashlib import md5
 from xml.dom import minidom
 from networkx.algorithms import isomorphism as iso
@@ -58,6 +58,10 @@ def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cac
 
 class PharmacophoreBase():
 
+    __primes_vertex = {'a': 2, 'H': 3, 'A': 5, 'D': 7, 'P': 11,'N': 13}
+    __primes_edge = (31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137,
+                     139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229)
+
     def __init__(self, bin_step=1, cached=False):
         self.__g = nx.Graph()
         self.__bin_step = bin_step
@@ -78,16 +82,18 @@ class PharmacophoreBase():
         feature_coords = self.__remove_dupl(feature_coords)
         self.__g.clear()
         for i, (label, coords) in enumerate(feature_coords):
-            self.__g.add_node(i, label=label, xyz=coords)
+            self.__g.add_node(i, label=label, xyz=coords, plabel=PharmacophoreBase.__primes_vertex[label])
         self.__update_dists()
 
     def __update_dists(self, bin_step=None):
         if self.__nx_version == 2:
             for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step))
+                dist = self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step)
+                self.__g.add_edge(i, j, dist=dist, pdist=PharmacophoreBase.__primes_edge[dist])
         else:
             for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step))
+                dist = self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step)
+                self.__g.add_edge(i, j, dist=dist, pdist=PharmacophoreBase.__primes_edge[dist])
 
     def __dist(self, coord1, coord2, bin_step=None):
         # coord1, coord2 - tuples of (x, y, z)
@@ -133,6 +139,21 @@ class PharmacophoreBase():
             f = self.__get_feature_signatures(ids=ids, feature_labels=f)
         return f
 
+    def __get_canon_feature_signatures2(self, ids):
+
+        feature_labels = dict(zip(ids, (self.__g.node[i]['label'] for i in ids)))
+        feature_signatures = []
+        for i in ids:
+            sign = []
+            for j in ids:
+                if i != j:
+                    if self.__nx_version == 2:
+                        sign.append((feature_labels[j], self.__g.edges[i, j]['dist']))
+                    else:
+                        sign.append((feature_labels[j], self.__g.edge[i][j]['dist']))
+            feature_signatures.append((feature_labels[i],) + tuple(sorted(sign)))
+        return tuple(feature_signatures)
+
     def _get_ids(self, ids=None):
         if ids is None:
             ids = self.__g.nodes()
@@ -151,20 +172,15 @@ class PharmacophoreBase():
         def calc_full_stereo(ids, tol):
             d = defaultdict(int)
             ids = self._get_ids(ids)
-            for comb in combinations(range(len(ids)), 4):
-                simplex_ids = tuple(sorted(ids[i] for i in comb))
+            for qudruplet_ids in combinations(ids, min(len(ids), 4)):
                 if self.__cached:
                     try:
-                        res = self.__cache[simplex_ids]
+                        res = self.__cache[qudruplet_ids]
                     except KeyError:
-                        res = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
-                                                                      self.__get_canon_feature_signatures(ids=simplex_ids, short_version=True),
-                                                                      tol)
-                        self.__cache[simplex_ids] = res
+                        res = self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol)
+                        self.__cache[qudruplet_ids] = res
                 else:
-                    res = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
-                                                                  self.__get_canon_feature_signatures(ids=simplex_ids, short_version=True),
-                                                                  tol)
+                    res = self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol)
                 d[res] += 1
             return md5(pickle.dumps(repr(tuple(sorted(d.items()))))).hexdigest()
 
@@ -172,7 +188,7 @@ class PharmacophoreBase():
         stereo = calc_full_stereo(ids, tol)
         return stereo
 
-    def __gen_quadruplet_canon_name_stereo(self, feature_ids, feature_names, tol=0):
+    def __gen_quadruplet_canon_name_stereo(self, feature_ids, tol=0):
         # return canon quadruplet signature and stereo
 
         def sign_dihedral_angle(coords):
@@ -193,6 +209,9 @@ class PharmacophoreBase():
             else:
                 res = 0
             return res
+
+        # feature_names = self.__get_canon_feature_signatures(ids=feature_ids, short_version=True)
+        feature_names = self.__get_canon_feature_signatures2(feature_ids)
 
         # less than 4 unique feature coordinates
         if len(set(tuple(coords for (label, coords) in self.get_feature_coords(feature_ids)))) < 4:
@@ -403,12 +422,9 @@ class PharmacophoreMol(PharmacophoreBase):
     def __init__(self, bin_step=1, cached=False):
         super().__init__(bin_step, cached)
 
-    def get_mol(self, p_obj=None):
+    def get_mol(self, ids=None):
         pmol = Chem.RWMol()
-        if p_obj is None:
-            all_coords = self.get_feature_coords()
-        else:
-            all_coords = p_obj.get_feature_coords()
+        all_coords = self.get_feature_coords(ids=ids)
         for item in all_coords:
             a = Chem.Atom(self.__feat_dict_mol[item[0]])
             pmol.AddAtom(a)
