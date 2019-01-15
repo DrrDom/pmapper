@@ -148,10 +148,10 @@ class PharmacophoreBase():
             for j in ids:
                 if i != j:
                     if self.__nx_version == 2:
-                        sign.append((feature_labels[j], self.__g.edges[i, j]['dist']))
+                        sign.append('%s%i' % (feature_labels[j], self.__g.edges[i, j]['dist']))
                     else:
-                        sign.append((feature_labels[j], self.__g.edge[i][j]['dist']))
-            feature_signatures.append((feature_labels[i],) + tuple(sorted(sign)))
+                        sign.append('%s%i' % (feature_labels[j], self.__g.edge[i][j]['dist']))
+            feature_signatures.append(feature_labels[i] + ''.join(sorted(sign)))
         return tuple(feature_signatures)
 
     def _get_ids(self, ids=None):
@@ -271,7 +271,7 @@ class PharmacophoreBase():
                             # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
                             stereo += 10 * sign_dihedral_angle(tuple(self.__g.node[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
 
-        return tuple(sorted(feature_names)), stereo
+        return ';'.join(sorted(feature_names)), stereo
 
     @staticmethod
     def __sort_two_lists(primary, secondary):
