@@ -231,7 +231,7 @@ class PharmacophoreBase():
 
                 if self.__nx_version == 2:
 
-                    if len(c) == len(names):  # system ABCD
+                    if len(c) == len(feature_names):  # system ABCD
                         stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
 
                     else:  # system AABB
@@ -245,14 +245,13 @@ class PharmacophoreBase():
                         else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
                             if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
                                 ids[2], ids[3] = ids[3], ids[2]
-                                names[2], names[3] = names[3], names[2]
                             stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
                             # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
                             stereo += 10 * sign_dihedral_angle(tuple(self.__g.nodes[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
 
                 else:
 
-                    if len(c) == len(names):   # system ABCD
+                    if len(c) == len(feature_names):   # system ABCD
                         stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
 
                     else:   # system AABB
@@ -266,7 +265,6 @@ class PharmacophoreBase():
                         else: # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
                             if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
                                 ids[2], ids[3] = ids[3], ids[2]
-                                names[2], names[3] = names[3], names[2]
                             stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
                             # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
                             stereo += 10 * sign_dihedral_angle(tuple(self.__g.node[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
