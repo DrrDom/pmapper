@@ -167,25 +167,23 @@ class PharmacophoreBase():
     #     s = self.__get_graph_signature(ids=ids)
     #     return md5(pickle.dumps(repr(s)))
 
+    def __get_signature_dict(self, ids, tol):
+        d = defaultdict(int)
+        for qudruplet_ids in combinations(ids, min(len(ids), 4)):
+            if self.__cached:
+                try:
+                    res = self.__cache[qudruplet_ids + (tol,)]
+                except KeyError:
+                    res = str(self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol) + (tol,))
+                    self.__cache[qudruplet_ids + (tol,)] = res
+            else:
+                res = str(self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol) + (tol,))
+            d[res] += 1
+        return d
+
     def __get_full_hash(self, ids=None, tol=0):
-
-        def calc_full_stereo(ids, tol):
-            d = defaultdict(int)
-            for qudruplet_ids in combinations(ids, min(len(ids), 4)):
-                if self.__cached:
-                    try:
-                        res = self.__cache[qudruplet_ids]
-                    except KeyError:
-                        res = str(self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol))
-                        self.__cache[qudruplet_ids] = res
-                else:
-                    res = str(self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol))
-                d[res] += 1
-            return md5(pickle.dumps(str(tuple(sorted(d.items()))))).hexdigest()
-
-        # ids = self._get_ids(ids)
-        stereo = calc_full_stereo(ids, tol)
-        return stereo
+        d = self.__get_signature_dict(ids, tol)
+        return md5(pickle.dumps(str(tuple(sorted(d.items()))))).hexdigest()
 
     def __gen_quadruplet_canon_name_stereo(self, feature_ids, tol=0):
         # return canon quadruplet signature and stereo
@@ -269,7 +267,7 @@ class PharmacophoreBase():
                             # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
                             stereo += 10 * sign_dihedral_angle(tuple(self.__g.node[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
 
-        return ';'.join(sorted(feature_names)), stereo
+        return '|'.join(sorted(feature_names)), stereo
 
     @staticmethod
     def __sort_two_lists(primary, secondary):
