@@ -409,6 +409,16 @@ class PharmacophoreBase():
                         output[(nbits_, act_bits_, tol_)].add(random.randrange(nbits_))
         return output
 
+    def get_descriptors(self, tol=0):
+        """
+
+        :param tol: tolerance
+        :return: dict of subpharmacophore names (keys) and counts (values)
+        """
+        ids = self._get_ids(None)
+        d = self.__get_signature_dict(ids, tol)
+        return {k[2:-1].replace("', ", '|').replace(", ", '|'): v for k, v in d.items()}
+
 
 class PharmacophoreMol(PharmacophoreBase):
 
