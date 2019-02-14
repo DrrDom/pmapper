@@ -13,17 +13,16 @@ import sys
 import argparse
 from multiprocessing import Pool, cpu_count
 from rdkit import Chem
-from rdkit.Chem import AllChem, ChemicalFeatures
+from rdkit.Chem import ChemicalFeatures
 from pharmacophore import Pharmacophore as P
 
 
 def get_count(smi, name):
     m = Chem.MolFromSmiles(smi)
-    AllChem.EmbedMolecule(m)
     if m:
         p = P()
-        p.load_from_feature_factory(m, process_factory)
-        feat = p.get_features_count()
+        q = p._get_features_atom_ids_factory(m, process_factory)
+        feat = {k: len(set(v)) for k, v in q.items()}
         for k in process_factory.GetFeatureFamilies():
             if k not in feat:
                 feat[k] = 0
