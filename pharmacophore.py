@@ -426,7 +426,7 @@ class PharmacophoreMatch(PharmacophoreMol):
         self.__em = iso.numerical_edge_match('dist', 0)
 
     def __get_transformation_matrix(self, model, mapping):
-        return rdMolAlign.GetAlignmentTransform(self.get_mol(), self.get_mol(model), atomMap=tuple(mapping.items()))[1]
+        return rdMolAlign.GetAlignmentTransform(self.get_mol(), model.get_mol(), atomMap=tuple(mapping.items()))[1]
 
     def __fit_graph(self, model):
         if self.get_bin_step() != 0:
