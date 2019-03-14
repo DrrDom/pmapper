@@ -13,8 +13,8 @@ import random
 from rdkit import Chem
 from rdkit.Chem import Conformer, rdMolAlign
 from rdkit.Geometry import Point3D
-from collections import Counter, defaultdict, OrderedDict
-from itertools import combinations, product, permutations
+from collections import Counter, defaultdict
+from itertools import combinations, product
 from hashlib import md5
 from xml.dom import minidom
 from networkx.algorithms import isomorphism as iso
@@ -106,39 +106,6 @@ class PharmacophoreBase():
         else:
             return int(tmp // bin_step)
 
-    # def __get_feature_signatures(self, ids=None, feature_labels=None):
-    #     """
-    #     :param ids: tuple/list of feature ids
-    #     :param feature_labels: tuple/list of feature labels
-    #       if both parameters are supplied they must have the same order and length
-    #     :return: tuple of feature signatures in the same order as supplied to the function
-    #     """
-    #     if ids is not None and feature_labels is not None and len(ids) != len(feature_labels):
-    #         raise Exception('The number of feature ids and labels must be the same')
-    #     ids = self._get_ids(ids)
-    #     if feature_labels is None:
-    #         feature_labels = tuple(self.__g.node[i]['label'] for i in ids)
-    #     feature_signatures = []
-    #     for num_i, i in enumerate(ids):
-    #         sign = []
-    #         for num_j, j in enumerate(ids):
-    #             if i != j:
-    #                 if self.__nx_version == 2:
-    #                     sign.append((feature_labels[num_j], self.__g.edges[i, j]['dist']))
-    #                 else:
-    #                     sign.append((feature_labels[num_j], self.__g.edge[i][j]['dist']))
-    #         feature_signatures.append((feature_labels[num_i],) + tuple(sorted(sign)))
-    #     return tuple(feature_signatures)
-
-    # def __get_canon_feature_signatures(self, ids=None, feature_labels=None, short_version=False):
-    #     ids = self._get_ids(ids)
-    #     f = self.__get_feature_signatures(ids=ids, feature_labels=feature_labels)
-    #     # the second iteration is reasonable to use for 5 and more point graphs
-    #     # for 4-point graph 1 iteration is enough
-    #     if not short_version:
-    #         f = self.__get_feature_signatures(ids=ids, feature_labels=f)
-    #     return f
-
     def __get_canon_feature_signatures2(self, ids):
 
         feature_labels = dict(zip(ids, (self.__g.node[i]['label'] for i in ids)))
@@ -158,14 +125,6 @@ class PharmacophoreBase():
         if ids is None:
             ids = self.__g.nodes()
         return tuple(sorted(set(ids)))
-
-    # def __get_graph_signature(self, ids=None):
-    #     ids = self._get_ids(ids)
-    #     return tuple(sorted(self.__get_canon_feature_signatures(ids=ids)))
-
-    # def __get_graph_signature_md5(self, ids=None):
-    #     s = self.__get_graph_signature(ids=ids)
-    #     return md5(pickle.dumps(repr(s)))
 
     def __get_signature_dict(self, ids, tol):
         d = defaultdict(int)
