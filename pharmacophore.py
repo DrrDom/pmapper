@@ -37,12 +37,12 @@ def read_smarts_feature_file(file_name):
     return output
 
 
-def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1):
+def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cached=False):
     # factory or smarts_featurs should be None to select only one procedure
     if smarts_features is not None and factory is not None:
         raise Exception("Only one options should be not None (smarts_features or factory)")
     output = []
-    p = Pharmacophore(bin_step)
+    p = Pharmacophore(bin_step, cached)
     if smarts_features is not None:
         ids = p._get_features_atom_ids(mol, smarts_features)
     elif factory is not None:
@@ -50,7 +50,7 @@ def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1):
     else:
         return output
     for conf in mol.GetConformers():
-        p = Pharmacophore(bin_step)
+        p = Pharmacophore(bin_step, cached)
         p.load_from_atom_ids(mol, ids, conf.GetId())
         output.append(p)
     return output
@@ -58,9 +58,15 @@ def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1):
 
 class PharmacophoreBase():
 
-    def __init__(self, bin_step=1):
+    __primes_vertex = {'a': 2, 'H': 3, 'A': 5, 'D': 7, 'P': 11,'N': 13}
+    __primes_edge = (31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137,
+                     139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229)
+
+    def __init__(self, bin_step=1, cached=False):
         self.__g = nx.Graph()
         self.__bin_step = bin_step
+        self.__cached = cached
+        self.__cache = dict()
         self.__nx_version = int(nx.__version__.split('.')[0])
 
     @staticmethod
@@ -76,16 +82,18 @@ class PharmacophoreBase():
         feature_coords = self.__remove_dupl(feature_coords)
         self.__g.clear()
         for i, (label, coords) in enumerate(feature_coords):
-            self.__g.add_node(i, label=label, xyz=coords)
+            self.__g.add_node(i, label=label, xyz=coords, plabel=PharmacophoreBase.__primes_vertex[label])
         self.__update_dists()
 
     def __update_dists(self, bin_step=None):
         if self.__nx_version == 2:
             for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step))
+                dist = self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step)
+                self.__g.add_edge(i, j, dist=dist, pdist=PharmacophoreBase.__primes_edge[dist])
         else:
             for i, j in combinations(self.__g.nodes(), 2):
-                self.__g.add_edge(i, j, dist=self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step))
+                dist = self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step)
+                self.__g.add_edge(i, j, dist=dist, pdist=PharmacophoreBase.__primes_edge[dist])
 
     def __dist(self, coord1, coord2, bin_step=None):
         # coord1, coord2 - tuples of (x, y, z)
@@ -98,73 +106,45 @@ class PharmacophoreBase():
         else:
             return int(tmp // bin_step)
 
-    def __get_feature_signatures(self, ids=None, feature_labels=None):
-        """
-        :param ids: tuple/list of feature ids
-        :param feature_labels: tuple/list of feature labels
-          if both parameters are supplied they must have the same order and length
-        :return: tuple of feature signatures in the same order as supplied to the function
-        """
-        if ids is not None and feature_labels is not None and len(ids) != len(feature_labels):
-            raise Exception('The number of feature ids and labels must be the same')
-        ids = self._get_ids(ids)
-        if feature_labels is None:
-            feature_labels = tuple(self.__g.node[i]['label'] for i in ids)
+    def __get_canon_feature_signatures2(self, ids):
+
+        feature_labels = dict(zip(ids, (self.__g.node[i]['label'] for i in ids)))
         feature_signatures = []
-        for num_i, i in enumerate(ids):
+        for i in ids:
             sign = []
-            for num_j, j in enumerate(ids):
+            for j in ids:
                 if i != j:
                     if self.__nx_version == 2:
-                        sign.append((feature_labels[num_j], self.__g.edges[i, j]['dist']))
+                        sign.append('%s%i' % (feature_labels[j], self.__g.edges[i, j]['dist']))
                     else:
-                        sign.append((feature_labels[num_j], self.__g.edge[i][j]['dist']))
-            feature_signatures.append((feature_labels[num_i],) + tuple(sorted(sign)))
+                        sign.append('%s%i' % (feature_labels[j], self.__g.edge[i][j]['dist']))
+            feature_signatures.append(feature_labels[i] + ''.join(sorted(sign)))
         return tuple(feature_signatures)
-
-    def __get_canon_feature_signatures(self, ids=None, feature_labels=None, short_version=False):
-        ids = self._get_ids(ids)
-        f = self.__get_feature_signatures(ids=ids, feature_labels=feature_labels)
-        # the second iteration is reasonable to use for 5 and more point graphs
-        # for 4-point graph 1 iteration is enough
-        if not short_version:
-            f = self.__get_feature_signatures(ids=ids, feature_labels=f)
-        return f
 
     def _get_ids(self, ids=None):
         if ids is None:
             ids = self.__g.nodes()
         return tuple(sorted(set(ids)))
 
-    def __get_graph_signature(self, ids=None):
-        ids = self._get_ids(ids)
-        return tuple(sorted(self.__get_canon_feature_signatures(ids=ids)))
-
-    def __get_graph_signature_md5(self, ids=None):
-        s = self.__get_graph_signature(ids=ids)
-        return md5(pickle.dumps(repr(s)))
+    def __get_signature_dict(self, ids, tol):
+        d = defaultdict(int)
+        for qudruplet_ids in combinations(ids, min(len(ids), 4)):
+            if self.__cached:
+                try:
+                    res = self.__cache[qudruplet_ids + (tol,)]
+                except KeyError:
+                    res = str(self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol) + (tol,))
+                    self.__cache[qudruplet_ids + (tol,)] = res
+            else:
+                res = str(self.__gen_quadruplet_canon_name_stereo(qudruplet_ids, tol) + (tol,))
+            d[res] += 1
+        return d
 
     def __get_full_hash(self, ids=None, tol=0):
+        d = self.__get_signature_dict(ids, tol)
+        return md5(pickle.dumps(str(tuple(sorted(d.items()))))).hexdigest()
 
-        def calc_full_stereo(ids, tol):
-            d = defaultdict(int)
-            ids = self._get_ids(ids)
-            for comb in combinations(range(len(ids)), 4):
-                simplex_ids = tuple(ids[i] for i in comb)
-                name, stereo = self.__gen_quadruplet_canon_name_stereo(simplex_ids,
-                                                                       self.__get_canon_feature_signatures(ids=simplex_ids, short_version=True),
-                                                                       tol)
-                d[(name, stereo)] += 1
-            return md5(pickle.dumps(repr(tuple(sorted(d.items()))))).hexdigest()
-
-        ids = self._get_ids(ids)
-        if len(set(tuple(coords for (label, coords) in self.get_feature_coords(ids)))) > 3:
-            stereo = calc_full_stereo(ids, tol)
-        else:
-            stereo = self.__get_graph_signature_md5(ids).hexdigest()
-        return stereo
-
-    def __gen_quadruplet_canon_name_stereo(self, feature_ids, feature_names, tol=0):
+    def __gen_quadruplet_canon_name_stereo(self, feature_ids, tol=0):
         # return canon quadruplet signature and stereo
 
         def sign_dihedral_angle(coords):
@@ -186,6 +166,9 @@ class PharmacophoreBase():
                 res = 0
             return res
 
+        # feature_names = self.__get_canon_feature_signatures(ids=feature_ids, short_version=True)
+        feature_names = self.__get_canon_feature_signatures2(feature_ids)
+
         # less than 4 unique feature coordinates
         if len(set(tuple(coords for (label, coords) in self.get_feature_coords(feature_ids)))) < 4:
 
@@ -205,7 +188,7 @@ class PharmacophoreBase():
 
                 if self.__nx_version == 2:
 
-                    if len(c) == len(names):  # system ABCD
+                    if len(c) == len(feature_names):  # system ABCD
                         stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
 
                     else:  # system AABB
@@ -219,14 +202,13 @@ class PharmacophoreBase():
                         else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
                             if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
                                 ids[2], ids[3] = ids[3], ids[2]
-                                names[2], names[3] = names[3], names[2]
                             stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
                             # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
                             stereo += 10 * sign_dihedral_angle(tuple(self.__g.nodes[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
 
                 else:
 
-                    if len(c) == len(names):   # system ABCD
+                    if len(c) == len(feature_names):   # system ABCD
                         stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
 
                     else:   # system AABB
@@ -240,12 +222,11 @@ class PharmacophoreBase():
                         else: # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
                             if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
                                 ids[2], ids[3] = ids[3], ids[2]
-                                names[2], names[3] = names[3], names[2]
                             stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
                             # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
                             stereo += 10 * sign_dihedral_angle(tuple(self.__g.node[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
 
-        return tuple(sorted(feature_names)), stereo
+        return '|'.join(sorted(feature_names)), stereo
 
     @staticmethod
     def __sort_two_lists(primary, secondary):
@@ -312,7 +293,7 @@ class PharmacophoreBase():
         return Counter([item[1]['label'] for item in data])
 
     def get_signature_md5(self, ids=None, tol=0):
-        return self.__get_full_hash(ids, tol)
+        return self.__get_full_hash(self._get_ids(ids), tol)
 
     def get_feature_coords(self, ids=None):
         if ids is None:
@@ -326,15 +307,19 @@ class PharmacophoreBase():
         p.load_from_feature_coords(coords)
         return p
 
-    def update(self, bin_step):
+    def update(self, bin_step=None, cached=None):
         if bin_step is not None and bin_step != self.__bin_step:
             self.__bin_step = bin_step
             self.__update_dists(bin_step)
+        if cached is not None:
+            self.__cached = cached
 
     def iterate_pharm(self, min_features=1, max_features=None, tol=0, return_feature_ids=True):
         ids = self._get_ids()
         if max_features is None:
             max_features = len(self.__g.nodes())
+        else:
+            max_features = min(max_features, len(self.__g.nodes()))
         for n in range(min_features, max_features + 1):
             for comb in combinations(ids, n):
                 if return_feature_ids:
@@ -383,20 +368,27 @@ class PharmacophoreBase():
                         output[(nbits_, act_bits_, tol_)].add(random.randrange(nbits_))
         return output
 
+    def get_descriptors(self, tol=0):
+        """
+
+        :param tol: tolerance
+        :return: dict of subpharmacophore names (keys) and counts (values)
+        """
+        ids = self._get_ids(None)
+        d = self.__get_signature_dict(ids, tol)
+        return {k[2:-1].replace("', ", '|').replace(", ", '|'): v for k, v in d.items()}
+
 
 class PharmacophoreMol(PharmacophoreBase):
 
     __feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10}
 
-    def __init__(self, bin_step=1):
-        super().__init__(bin_step)
+    def __init__(self, bin_step=1, cached=False):
+        super().__init__(bin_step, cached)
 
-    def get_mol(self, p_obj=None):
+    def get_mol(self, ids=None):
         pmol = Chem.RWMol()
-        if p_obj is None:
-            all_coords = self.get_feature_coords()
-        else:
-            all_coords = p_obj.get_feature_coords()
+        all_coords = self.get_feature_coords(ids=ids)
         for item in all_coords:
             a = Chem.Atom(self.__feat_dict_mol[item[0]])
             pmol.AddAtom(a)
@@ -409,8 +401,8 @@ class PharmacophoreMol(PharmacophoreBase):
 
 class PharmacophoreMatch(PharmacophoreMol):
 
-    def __init__(self, bin_step=1):
-        super().__init__(bin_step)
+    def __init__(self, bin_step=1, cached=False):
+        super().__init__(bin_step, cached)
         self.__nm = iso.categorical_node_match('label', '_')
         self.__em = iso.numerical_edge_match('dist', 0)
 
