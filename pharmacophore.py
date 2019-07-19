@@ -566,7 +566,7 @@ class Pharmacophore(PharmacophoreMatch):
 
     def load_from_atom_ids(self, mol, atom_features_ids, confId=-1):
         # atom_features_ids - dict of feature labels and list of ids tuples
-        # {'A': [(12,), (14)], 'H': [(11,12,13,14,15,16)], ...}
+        # {'A': [(12,), (14,)], 'H': [(11,12,13,14,15,16)], ...}
         # return list of tuples containing feature labels with their coordinates
         # [('A', (1.23, 2.34, 3.45)), ('A', (4.56, 5.67, 6.78)), ...]
 
@@ -673,3 +673,13 @@ class Pharmacophore(PharmacophoreMatch):
             self.load_from_feature_coords(feature_coords)
             self.update(d['bin_step'])
 
+    def load_from_xyz(self, fname):
+        with open(fname) as f:
+            feature_coords = []
+            f.readline()
+            f.readline()
+            for line in f:
+                label, *coords = line.strip().split()
+                coords = tuple(map(float, coords))
+                feature_coords.append((label, coords))
+            self.load_from_feature_coords(tuple(feature_coords))
