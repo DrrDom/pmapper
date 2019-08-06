@@ -106,9 +106,21 @@ class PharmacophoreBase():
         else:
             return int(tmp // bin_step)
 
-    def __get_canon_feature_signatures2(self, ids):
+    def __get_canon_feature_signatures2(self, ids=None, feature_labels=None):
+        """
 
-        feature_labels = dict(zip(ids, (self.__g.node[i]['label'] for i in ids)))
+        :param ids: list of ids of features. None - all features.
+        :param feature_labels: list of feature labels in the same order as ids. None - original feature labels
+                               will be used.
+        :return: list of feature signature in the same order as ids
+        """
+        if ids is None:
+            ids = self.__g.nodes()
+        if feature_labels is None:
+            # feature_labels = tuple(self.__g.node[i]['label'] for i in ids)
+            feature_labels = dict(zip(ids, (self.__g.node[i]['label'] for i in ids)))
+        else:
+            feature_labels = dict(zip(ids, feature_labels))
         feature_signatures = []
         for i in ids:
             sign = []
@@ -125,6 +137,12 @@ class PharmacophoreBase():
         if ids is None:
             ids = self.__g.nodes()
         return tuple(sorted(set(ids)))
+
+    def __get_hash_unsteric(self, ids):
+        f = self.__get_canon_feature_signatures2(ids=ids)
+        f = self.__get_canon_feature_signatures2(ids=ids, feature_labels=f)
+        signature = tuple(sorted(f))
+        return md5(pickle.dumps(str(signature))).hexdigest()
 
     def __get_signature_dict(self, ids, tol):
         d = defaultdict(int)
@@ -292,8 +310,21 @@ class PharmacophoreBase():
         data = self.__g.nodes(data=True)
         return Counter([item[1]['label'] for item in data])
 
-    def get_signature_md5(self, ids=None, tol=0):
-        return self.__get_full_hash(self._get_ids(ids), tol)
+    def get_signature_md5(self, ids=None, tol=0, ignore_stereo=False):
+        """
+        Return hash of a pharmacophore.
+        :param ids: list of feature ids to be considered for hash calculation
+        :param tol: float value - minimal angle of deviation of a vertex within a quadruplet from planarity
+                    to calculate stereoconfiguration. If the angle is less - a zero configuration would be
+                    assigned to a qudruplet.
+        :param unsteric: return hash without considering configuration of a pharmacophore. It is faster and
+                         uses only information about feature topology.
+        :return: string - md5 hash
+        """
+        if not ignore_stereo:
+            return self.__get_full_hash(self._get_ids(ids), tol)
+        else:
+            return self.__get_hash_unsteric(self._get_ids(ids))
 
     def get_feature_coords(self, ids=None):
         if ids is None:
