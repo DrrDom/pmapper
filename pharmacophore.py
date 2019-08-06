@@ -58,10 +58,6 @@ def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cac
 
 class PharmacophoreBase():
 
-    __primes_vertex = {'a': 2, 'H': 3, 'A': 5, 'D': 7, 'P': 11,'N': 13}
-    __primes_edge = (31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137,
-                     139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229)
-
     def __init__(self, bin_step=1, cached=False):
         self.__g = nx.Graph()
         self.__bin_step = bin_step
@@ -82,18 +78,18 @@ class PharmacophoreBase():
         feature_coords = self.__remove_dupl(feature_coords)
         self.__g.clear()
         for i, (label, coords) in enumerate(feature_coords):
-            self.__g.add_node(i, label=label, xyz=coords, plabel=PharmacophoreBase.__primes_vertex[label])
+            self.__g.add_node(i, label=label, xyz=coords)
         self.__update_dists()
 
     def __update_dists(self, bin_step=None):
         if self.__nx_version == 2:
             for i, j in combinations(self.__g.nodes(), 2):
                 dist = self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step)
-                self.__g.add_edge(i, j, dist=dist, pdist=PharmacophoreBase.__primes_edge[dist])
+                self.__g.add_edge(i, j, dist=dist)
         else:
             for i, j in combinations(self.__g.nodes(), 2):
                 dist = self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step)
-                self.__g.add_edge(i, j, dist=dist, pdist=PharmacophoreBase.__primes_edge[dist])
+                self.__g.add_edge(i, j, dist=dist)
 
     def __dist(self, coord1, coord2, bin_step=None):
         # coord1, coord2 - tuples of (x, y, z)
