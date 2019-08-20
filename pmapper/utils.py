@@ -8,18 +8,20 @@
 # license         : 
 #==============================================================================
 
-import os
+from os import path
+from rdkit import Chem
 from rdkit.Chem import AllChem, ChemicalFeatures
 from .pharmacophore import Pharmacophore
 
 
-def load_smarts(filename=os.path.join(os.path.abspath(__file__), 'smarts_features.txt')):
+def load_smarts(filename=path.join(path.abspath(path.dirname(__file__)), 'smarts_features.txt')):
     """
     Load feature SMARTS patterns from a file.
 
-    :param filename: file name containing SMARTS patterns of pharmacophore features
+    :param filename: name of a text containing SMARTS patterns of pharmacophore features
     :type filename: str
-    :return: dictionary where keys are feature labels and values are tuples of corresponding SMARTS patterns
+    :return: dictionary where keys are feature labels and values are tuples of corresponding SMARTS patterns in
+             RDKit Mol format
 
     """
     output = dict()
@@ -37,11 +39,11 @@ def load_smarts(filename=os.path.join(os.path.abspath(__file__), 'smarts_feature
     return output
 
 
-def load_factory(filename=os.path.join(os.path.abspath(__file__), 'smarts_features.fdef')):
+def load_factory(filename=path.join(path.abspath(path.dirname(__file__)), 'smarts_features.fdef')):
     """
     Load RDKit factory with feature patterns from a file.
 
-    :param filename: file name of fdef format
+    :param filename: file name of fdef format file
     :type filename: str
     :return: object of MolChemicalFeatureFactory class
     """
