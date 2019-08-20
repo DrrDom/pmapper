@@ -38,9 +38,9 @@ def read_smarts_feature_file(file_name):
 
 
 def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cached=False):
-    # factory or smarts_featurs should be None to select only one procedure
+    # factory or smarts_features should be None to select only one procedure
     if smarts_features is not None and factory is not None:
-        raise Exception("Only one options should be not None (smarts_features or factory)")
+        raise ValueError("Only one options should be not None (smarts_features or factory)")
     output = []
     p = Pharmacophore(bin_step, cached)
     if smarts_features is not None:
@@ -58,7 +58,21 @@ def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cac
 
 class PharmacophoreBase():
 
+    """
+    Basic class which stores and manages pharmacophore object
+
+    """
+
     def __init__(self, bin_step=1, cached=False):
+        """
+
+        :param bin_step: binning step
+        :type bin_step: float
+        :param cached: whether or not to cache intermediate computation results. This substantially increases speed
+                       of repeated computation of a hash or fingerprints.
+        :type cached: bool
+
+        """
         self.__g = nx.Graph()
         self.__bin_step = bin_step
         self.__cached = cached
@@ -279,31 +293,83 @@ class PharmacophoreBase():
                 return 0
 
     def get_bin_step(self):
+        """
+
+        :return: value of a binning step of a pharmacophore
+        :rtype: float
+
+        """
         return self.__bin_step
 
     def get_graph(self):
+        """
+
+        :return: a copy of a NetworkX graph object of a pharmacophore
+
+        """
         return self.__g.copy()
 
     def get_features_count(self):
+        """
+
+        :return: Counter (dict-like) object with feature labels and their feature count of a pharmacophore
+
+        """
         data = self.__g.nodes(data=True)
         return Counter([item[1]['label'] for item in data])
 
     def get_signature_md5(self, ids=None, tol=0):
+        """
+        Return pharmacophore hash which takes into account topology of features and configuration of a pharmacophore
+
+        :param ids: iterable with feature ids to be used to compute pharmacophore hash
+        :type ids: iterable (int)
+        :param tol: tolerance value to ignore small deviation of quadruplets of features from planarity. Minimal angle
+                    between an edge and a plane formed by other three features. Quadruplets having at least one angle
+                    less than tolerance value are assigned 0 chirality.
+        :type tol: float
+        :return: md5 hash of a pharmacophore
+        :rtype: str
+
+        """
         return self.__get_full_hash(self._get_ids(ids), tol)
 
     def get_feature_coords(self, ids=None):
+        """
+        Get coordinates of selected features
+
+        :param ids: iterable with feature ids to be used
+        :type ids: iterable (int)
+        :return: list of 2-tuples where each tuple consists of a label and a 3-tuple with coordinates
+
+        """
         if ids is None:
             return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True)]
         else:
             return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True) if k in set(ids)]
 
     def get_mirror_pharmacophore(self):
+        """
+
+        :return: a new instance of a Pharmacophore class with all features mirrored in yz-plane.
+
+        """
         p = Pharmacophore()
         coords = tuple((label, (-x, y, z)) for label, (x, y, z) in self.get_feature_coords())
         p.load_from_feature_coords(coords)
         return p
 
     def update(self, bin_step=None, cached=None):
+        """
+        Change parameters of the pharmacophore instance
+
+        :param bin_step: binning step.
+        :type bin_step: float
+        :param cached: whether or not to cache intermediate computation results. This substantially increases speed
+                       of repeated computation of a hash or fingerprints.
+        :type cached: bool
+
+        """
         if bin_step is not None and bin_step != self.__bin_step:
             self.__bin_step = bin_step
             self.__update_dists(bin_step)
@@ -311,6 +377,20 @@ class PharmacophoreBase():
             self.__cached = cached
 
     def iterate_pharm(self, min_features=1, max_features=None, tol=0, return_feature_ids=True):
+        """
+        Iterate over subsets of features to get their hashes
+
+        :param min_features: minimum number of features in a subset
+        :type min_features: int
+        :param max_features: maximum number of features in a subset
+        :type max_features: int
+        :param tol: tolerance
+        :type tol: float
+        :param return_feature_ids: whether or not return feature ids
+        :type return_feature_ids: bool
+        :return: generator over hashes of feature subsets or over 2-tuples with a hash and a tuple with feature ids.
+
+        """
         ids = self._get_ids()
         if max_features is None:
             max_features = len(self.__g.nodes())
@@ -325,12 +405,16 @@ class PharmacophoreBase():
 
     def iterate_pharm1(self, fix_ids, tol=0, return_feature_ids=True):
         """
-        take list of feature ids and add one more feature for them to enumerate all possible combinations
+        Iterate over subsets of features created by addition of a single feature to the input list of features.
 
-        :param fix_ids: list of tuples/lists with feature ids
-        :param tol:
-        :param return_feature_ids:
-        :return:
+        :param fix_ids: iterable with feature ids which will be used as a constant part of enumerated feature subsets
+        :type fix_ids: iterable (int)
+        :param tol: tolerance
+        :type tol: float
+        :param return_feature_ids: whether or not return feature ids
+        :type return_feature_ids: bool
+        :return: generator over hashes of feature subsets or over 2-tuples with a hash and a tuple with feature ids.
+
         """
         visited_id_comb = set()
         for ids in fix_ids:
@@ -345,6 +429,23 @@ class PharmacophoreBase():
                         yield self.__get_full_hash(ids=i, tol=tol)
 
     def get_fp(self, min_features=3, max_features=3, tol=0, nbits=2048, activate_bits=1):
+        """
+        Return a bitstring fingerprint of a pharmcophore encoded by subsets of features
+
+        :param min_features: minimum number of features in a subset
+        :type min_features: int
+        :param max_features: maximum number of features in a subset
+        :type max_features: int
+        :param tol: tolerance
+        :type tol: float
+        :param nbits: length of a bit string
+        :type nbits: int
+        :param activate_bits: number of activated bits per feature subset
+        :type activate_bits: int
+        :return: set of numbers of activated bits (bitstring)
+        :rtype: set
+
+        """
         output = set()
         for h in self.iterate_pharm(min_features, max_features, tol, False):
             random.seed(int(h, 16))
@@ -353,7 +454,24 @@ class PharmacophoreBase():
         return output
 
     def get_fp2(self, min_features=3, max_features=3, tol=(0, ), nbits=(2048, ), activate_bits=(1, )):
-        # return dict of {(nbits, activate_bits): {bit set}, ...}
+        """
+        Return a bitstring fingerprint of a pharmcophore encoded by subsets of features obtained with different setups
+
+        :param min_features: minimum number of features in a subset
+        :type min_features: int
+        :param max_features: maximum number of features in a subset
+        :type max_features: int
+        :param tol: iterable with tolerance values
+        :type tol: iterable (float)
+        :param nbits: iterable with lengths of a bit string
+        :type nbits: iterable (int)
+        :param activate_bits: iterable with numbers of activated bits per feature subset
+        :type activate_bits: iterable (int)
+        :return: dictionary where key is a tuple of (nbits, activate_bits, tol) and value is a set of
+                 numbers of activated bits (bitstring)
+        :rtype: dict
+
+        """
         output = defaultdict(set)
         for tol_ in tol:
             for h in self.iterate_pharm(min_features, max_features, tol_, False):
@@ -366,9 +484,13 @@ class PharmacophoreBase():
 
     def get_descriptors(self, tol=0):
         """
+        Return count-based descriptor string of a pharmacophore
 
         :param tol: tolerance
-        :return: dict of subpharmacophore names (keys) and counts (values)
+        :type tol: float
+        :return: dictionary where keys are hashes of feature quadruplets and values are counts of identical quadruples
+        :rtype: dict
+
         """
         ids = self._get_ids(None)
         d = self.__get_signature_dict(ids, tol)
@@ -377,12 +499,25 @@ class PharmacophoreBase():
 
 class PharmacophoreMol(PharmacophoreBase):
 
+    """
+    Class which represents pharmacophore as RDKit Mol object
+
+    """
+
     __feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10}
 
     def __init__(self, bin_step=1, cached=False):
         super().__init__(bin_step, cached)
 
     def get_mol(self, ids=None):
+        """
+        Get RDKit Mol object of a pharmacophore where features are replaced with atoms
+
+        :param ids: iterable with feature ids to be used
+        :type ids: iterable (int)
+        :return: RDKit RWMol
+
+        """
         pmol = Chem.RWMol()
         all_coords = self.get_feature_coords(ids=ids)
         for item in all_coords:
@@ -396,6 +531,11 @@ class PharmacophoreMol(PharmacophoreBase):
 
 
 class PharmacophoreMatch(PharmacophoreMol):
+
+    """
+    Class which implements matching of pharmacopores
+
+    """
 
     def __init__(self, bin_step=1, cached=False):
         super().__init__(bin_step, cached)
@@ -425,17 +565,23 @@ class PharmacophoreMatch(PharmacophoreMol):
 
     def fit_model(self, model, n_omitted=0, essential_features=None, tol=0, get_transform_matrix=False):
         """
-        model: a pharmacophore model which is used for matching (it should be a subgraph of the current
-            pharmacophore graph).
-        n_omitted: a number of simultaneously omitted features in a model pharmacophore
-        essential_features: a list of ids of features which will not be omitted in a model pharmacophore,
-            not mentioned features can be omitted iteratively (optional features).
-            Default: None - means all features are optional.
-        tol: tolerance when define stereoconfiguration
-        get_transform_matrix: if set, the function will return a transformation matrix as an additional output
 
-        return: tuple of feature ids of a target (query) model fit to the current pharmacophore, additionally a
-            transformation matrix can be returned
+        :param model: a pharmacophore model which is used for matching (it should be a subgraph of the current
+                      pharmacophore graph).
+        :type model: Pharmacophore
+        :param n_omitted: a number of simultaneously omitted features in a model pharmacophore
+        :type n_omitted: int
+        :param essential_features: a list of ids of features which will not be omitted in a model pharmacophore.
+        :type essential_features: list
+        :param tol: tolerance
+        :type tol: float
+        :param get_transform_matrix: if set, the function will return a transformation matrix as an additional output
+                                     to align the pharmacopore to a model
+        :type get_transform_matrix: bool
+        :return: tuple of feature ids of a model matching the pharmacophore or a 2-tuple where the first item is
+                 tuple of feature ids of a model matching the pharmacophore and the seond item is
+                 a transformation matrix. If no matching `None` will be returned.
+
         """
 
         if self.get_bin_step() != model.get_bin_step():
@@ -479,13 +625,34 @@ class PharmacophoreMatch(PharmacophoreMol):
 
 class Pharmacophore(PharmacophoreMatch):
 
+    """
+    Class to load/save pharmacophores
+
+    """
+
     __feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
 
     def load_from_smarts(self, mol, smarts):
+        """
+        Create pharmacophore from RDKit Mol and features encoded by SMARTS.
+
+        :param mol: RDKit Mol object
+        :param smarts: dictionary of SMARTS of features obtained with `read_smarts_feature_file` function
+        :return: nothing
+
+        """
         features_atom_ids = self._get_features_atom_ids(mol, smarts)
         self.load_from_atom_ids(mol, features_atom_ids)
 
     def load_from_feature_factory(self, mol, factory):
+        """
+        Create pharmacophore from RDKit Mol and features encoded by RDKit feature factory.
+
+        :param mol: RDKit Mol object
+        :param factory: object of MolChemicalFeatureFactory class
+        :return: nothing
+
+        """
         # factory is ChemicalFeatures.BuildFeatureFactory(fdefName)
         features_atom_ids = self._get_features_atom_ids_factory(mol, factory)
         self.load_from_atom_ids(mol, features_atom_ids)
@@ -561,6 +728,17 @@ class Pharmacophore(PharmacophoreMatch):
         return output
 
     def load_from_atom_ids(self, mol, atom_features_ids, confId=-1):
+        """
+        Create pharmacophore from RDKit Mol and atom ids subsets associated with particular features
+
+        :param mol: RDKit Mol object
+        :param atom_features_ids: dictionary where keys are feature labels and values are lists of tuples with atom
+                                  ids of individual features, e.g.
+                                  {'A': [(12,), (14,)], 'H': [(11,12,13,14,15,16)], ...}
+        :param confId: id of a conformer in a molecule
+        :return: nothing
+
+        """
         # atom_features_ids - dict of feature labels and list of ids tuples
         # {'A': [(12,), (14,)], 'H': [(11,12,13,14,15,16)], ...}
         # return list of tuples containing feature labels with their coordinates
@@ -588,6 +766,13 @@ class Pharmacophore(PharmacophoreMatch):
         return 0
 
     def load_ls_model(self, pml_fname):
+        """
+        Read pharmacophore from LigandScout pml-file
+
+        :param pml_fname: file name of a LigandScout pml-file
+        :return: nothing
+
+        """
 
         feature_names_dict = {'HBD': 'D', 'HBA': 'A', 'NI': 'N', 'PI': 'P', 'H': 'H', 'AR': 'a'}
         coord = []
@@ -621,6 +806,14 @@ class Pharmacophore(PharmacophoreMatch):
         self.load_from_feature_coords(coord)
 
     def save_ls_model(self, fname, name="pmapper_pharmcophore"):
+        """
+        Save pharmacophore to LigandScout pml-file.
+
+        :param fname: pml-file name
+        :param name: name of a pharmacophore which would be stored in a file and will be displayed in LigandScout
+        :return: nothing
+
+        """
         coords = self.get_feature_coords()
         doc = minidom.Document()
         root = doc.createElement('pharmacophore')
@@ -657,12 +850,27 @@ class Pharmacophore(PharmacophoreMatch):
             f.write(doc.toprettyxml(indent="  "))
 
     def save_to_pma(self, fname, feature_ids=None):
+        """
+        Save pharmacophore in json format. This is a native way to store pharmacophore objects in a readable format.
+
+        :param fname: pma-file name
+        :param feature_ids: ids of features which should be stored. Default: None (all features).
+        :return: nothing
+
+        """
         coords = self.get_feature_coords(feature_ids)
         obj = {'bin_step': self.get_bin_step(), 'feature_coords': coords}
         with open(fname, 'wt') as f:
             f.write(json.dumps(obj))
 
     def load_from_pma(self, fname):
+        """
+        Read pharmacophore from a pma-file.
+
+        :param fname: pma-file name
+        :return: nothing
+
+        """
         with open(fname) as f:
             d = json.loads(f.readline().strip())
             feature_coords = tuple((feature[0], tuple(feature[1])) for feature in d['feature_coords'])
@@ -670,6 +878,13 @@ class Pharmacophore(PharmacophoreMatch):
             self.update(d['bin_step'])
 
     def load_from_xyz(self, fname):
+        """
+        Read pharmacophore from xyz-file.
+
+        :param fname: xyz-file name
+        :return: nothing
+
+        """
         with open(fname) as f:
             feature_coords = []
             f.readline()

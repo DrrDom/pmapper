@@ -14,7 +14,7 @@ import argparse
 from multiprocessing import Pool, cpu_count
 from rdkit import Chem
 from rdkit.Chem import ChemicalFeatures
-from pharmacophore import Pharmacophore as P
+from .pharmacophore import Pharmacophore as P
 
 
 def get_count(smi, name):
