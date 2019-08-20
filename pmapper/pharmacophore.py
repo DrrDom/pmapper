@@ -21,41 +21,6 @@ from networkx.algorithms import isomorphism as iso
 from math import sqrt, asin, pi
 
 
-def read_smarts_feature_file(file_name):
-    output = dict()
-    with open(file_name) as f:
-        for line in f:
-            line = line.strip()
-            if line and line[0] != '#':
-                tmp = line.split()
-                q = Chem.MolFromSmarts(tmp[0])
-                if tmp[1] not in output.keys():
-                    output[tmp[1]] = [q]
-                else:
-                    output[tmp[1]].append(q)
-    output = {k: tuple(v) for k, v in output.items()}
-    return output
-
-
-def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cached=False):
-    # factory or smarts_features should be None to select only one procedure
-    if smarts_features is not None and factory is not None:
-        raise ValueError("Only one options should be not None (smarts_features or factory)")
-    output = []
-    p = Pharmacophore(bin_step, cached)
-    if smarts_features is not None:
-        ids = p._get_features_atom_ids(mol, smarts_features)
-    elif factory is not None:
-        ids = p._get_features_atom_ids_factory(mol, factory)
-    else:
-        return output
-    for conf in mol.GetConformers():
-        p = Pharmacophore(bin_step, cached)
-        p.load_from_atom_ids(mol, ids, conf.GetId())
-        output.append(p)
-    return output
-
-
 class PharmacophoreBase():
 
     """
@@ -637,7 +602,7 @@ class Pharmacophore(PharmacophoreMatch):
         Create pharmacophore from RDKit Mol and features encoded by SMARTS.
 
         :param mol: RDKit Mol object
-        :param smarts: dictionary of SMARTS of features obtained with `read_smarts_feature_file` function
+        :param smarts: dictionary of SMARTS of features obtained with `load_smarts` function from `pmapper.util` module
         :return: nothing
 
         """
