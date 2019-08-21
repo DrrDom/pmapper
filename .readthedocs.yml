@@ -1,10 +1,13 @@
 version: 2
 
 sphinx:
-  builder: html
-  configuration: docs/conf.py
   fail_on_warning: true
 
 conda:
   environment: conda_env.yml
 
+python:
+  version: 3.6
+  install:
+    - method: setuptools
+      path: .

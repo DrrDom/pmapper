@@ -9,4 +9,3 @@ get_pharm_counts
 
 .. program-output:: get_pharm_counts -h
 
-
