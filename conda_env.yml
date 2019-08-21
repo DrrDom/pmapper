@@ -93,6 +93,7 @@ dependencies:
 - sphinxcontrib-devhelp=1.0.1=py_0
 - sphinxcontrib-htmlhelp=1.0.2=py_0
 - sphinxcontrib-jsmath=1.0.1=py_0
+- sphinxcontrib-programoutput=0.14=py_0
 - sphinxcontrib-qthelp=1.0.2=py_0
 - sphinxcontrib-serializinghtml=1.1.3=py_0
 - sqlite=3.29.0=h7b6447c_0
