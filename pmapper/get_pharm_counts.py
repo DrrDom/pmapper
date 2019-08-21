@@ -50,16 +50,14 @@ def pool_init(fdef_fname):
     process_factory = ChemicalFeatures.BuildFeatureFactory(fdef_fname)
 
 
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser(description='Count the number of pharmacophore features of each type. '
-                                                 'If input mols are wrong NA values will be inserted in output.')
+def entry_point():
+    parser = argparse.ArgumentParser(description='Count the number of pharmacophore features of each type.')
     parser.add_argument('-i', '--in', metavar='input.smi', required=True,
-                        help='input SMILES file. Should contain mol title as a second field.'
+                        help='input SMILES file. Should contain mol title as a second field. '
                              'Fields are tab-separated. No header.')
     parser.add_argument('-o', '--out', metavar='output.txt', required=True,
-                        help='output text file with calculated physicochemical properties. '
-                             'Molecules causing errors will be reported to stderr.')
+                        help='output text file with calculated number of features. '
+                             'If input molecules cannot be parsed NA values will be inserted in output.')
     parser.add_argument('-c', '--ncpu', metavar='INTEGER', required=False, default=1,
                         help='Number of CPU cores to use. Default: 1.')
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
@@ -84,3 +82,7 @@ if __name__ == '__main__':
             if verbose and (i + 1) % 100 == 0:
                 sys.stderr.write('\r%i molecules passed' % (i + 1))
                 sys.stderr.flush()
+
+
+if __name__ == '__main__':
+    entry_point()

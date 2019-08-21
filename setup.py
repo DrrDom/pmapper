@@ -27,5 +27,7 @@ setuptools.setup(
         'rdkit': ['rdkit>=2017.09'],
         'networkx': ['networkx>=1.11'],
     },
+    entry_points={'console_scripts':
+                      ['get_pharm_counts = pmapper.get_pharm_counts:entry_point']},
     include_package_data=True
 )
