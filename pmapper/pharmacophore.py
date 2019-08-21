@@ -20,8 +20,12 @@ from xml.dom import minidom
 from networkx.algorithms import isomorphism as iso
 from math import sqrt, asin, pi
 
+from .customize import load_smarts
 
-class PharmacophoreBase():
+__smarts_patterns = load_smarts()
+
+
+class __PharmacophoreBase():
 
     """
     Basic class which stores and manages pharmacophore object
@@ -30,6 +34,7 @@ class PharmacophoreBase():
 
     def __init__(self, bin_step=1, cached=False):
         """
+        Initializes Pharmacophore instance
 
         :param bin_step: binning step
         :type bin_step: float
@@ -259,6 +264,7 @@ class PharmacophoreBase():
 
     def get_bin_step(self):
         """
+        Returns current binning step value
 
         :return: value of a binning step of a pharmacophore
         :rtype: float
@@ -268,6 +274,7 @@ class PharmacophoreBase():
 
     def get_graph(self):
         """
+        Returns a copy of a pharmacophore graph
 
         :return: a copy of a NetworkX graph object of a pharmacophore
 
@@ -276,6 +283,7 @@ class PharmacophoreBase():
 
     def get_features_count(self):
         """
+        Returns number of each feature type
 
         :return: Counter (dict-like) object with feature labels and their feature count of a pharmacophore
 
@@ -285,7 +293,7 @@ class PharmacophoreBase():
 
     def get_signature_md5(self, ids=None, tol=0):
         """
-        Return pharmacophore hash which takes into account topology of features and configuration of a pharmacophore
+        Returns pharmacophore hash.
 
         :param ids: iterable with feature ids to be used to compute pharmacophore hash
         :type ids: iterable (int)
@@ -301,7 +309,7 @@ class PharmacophoreBase():
 
     def get_feature_coords(self, ids=None):
         """
-        Get coordinates of selected features
+        Returns coordinates of features.
 
         :param ids: iterable with feature ids to be used
         :type ids: iterable (int)
@@ -315,6 +323,7 @@ class PharmacophoreBase():
 
     def get_mirror_pharmacophore(self):
         """
+        Returns a new mirrored Pharmacophore instance.
 
         :return: a new instance of a Pharmacophore class with all features mirrored in yz-plane.
 
@@ -326,7 +335,7 @@ class PharmacophoreBase():
 
     def update(self, bin_step=None, cached=None):
         """
-        Change parameters of the pharmacophore instance
+        Changes parameters of the pharmacophore instance.
 
         :param bin_step: binning step.
         :type bin_step: float
@@ -343,7 +352,7 @@ class PharmacophoreBase():
 
     def iterate_pharm(self, min_features=1, max_features=None, tol=0, return_feature_ids=True):
         """
-        Iterate over subsets of features to get their hashes
+        Iterates over subsets of features to get their hashes.
 
         :param min_features: minimum number of features in a subset
         :type min_features: int
@@ -370,7 +379,7 @@ class PharmacophoreBase():
 
     def iterate_pharm1(self, fix_ids, tol=0, return_feature_ids=True):
         """
-        Iterate over subsets of features created by addition of a single feature to the input list of features.
+        Iterates over subsets of features created by addition of a single feature to the input list of features.
 
         :param fix_ids: iterable with feature ids which will be used as a constant part of enumerated feature subsets
         :type fix_ids: iterable (int)
@@ -395,7 +404,7 @@ class PharmacophoreBase():
 
     def get_fp(self, min_features=3, max_features=3, tol=0, nbits=2048, activate_bits=1):
         """
-        Return a bitstring fingerprint of a pharmcophore encoded by subsets of features
+        Returns a bitstring fingerprint of a pharmacophore encoded by subsets of features
 
         :param min_features: minimum number of features in a subset
         :type min_features: int
@@ -420,7 +429,7 @@ class PharmacophoreBase():
 
     def get_fp2(self, min_features=3, max_features=3, tol=(0, ), nbits=(2048, ), activate_bits=(1, )):
         """
-        Return a bitstring fingerprint of a pharmcophore encoded by subsets of features obtained with different setups
+        Returns a bitstring fingerprint of a pharmacophore encoded by subsets of features obtained with different setups
 
         :param min_features: minimum number of features in a subset
         :type min_features: int
@@ -449,7 +458,7 @@ class PharmacophoreBase():
 
     def get_descriptors(self, tol=0):
         """
-        Return count-based descriptor string of a pharmacophore
+        Returns count-based descriptor string of a pharmacophore.
 
         :param tol: tolerance
         :type tol: float
@@ -462,7 +471,7 @@ class PharmacophoreBase():
         return {k[2:-1].replace("', ", '|').replace(", ", '|'): v for k, v in d.items()}
 
 
-class PharmacophoreMol(PharmacophoreBase):
+class __PharmacophoreMol(__PharmacophoreBase):
 
     """
     Class which represents pharmacophore as RDKit Mol object
@@ -476,7 +485,7 @@ class PharmacophoreMol(PharmacophoreBase):
 
     def get_mol(self, ids=None):
         """
-        Get RDKit Mol object of a pharmacophore where features are replaced with atoms
+        Returns RDKit Mol object of a pharmacophore where features are replaced with atoms
 
         :param ids: iterable with feature ids to be used
         :type ids: iterable (int)
@@ -495,7 +504,7 @@ class PharmacophoreMol(PharmacophoreBase):
         return pmol
 
 
-class PharmacophoreMatch(PharmacophoreMol):
+class __PharmacophoreMatch(__PharmacophoreMol):
 
     """
     Class which implements matching of pharmacopores
@@ -530,6 +539,7 @@ class PharmacophoreMatch(PharmacophoreMol):
 
     def fit_model(self, model, n_omitted=0, essential_features=None, tol=0, get_transform_matrix=False):
         """
+        Matches the supplied pharmacophore model.
 
         :param model: a pharmacophore model which is used for matching (it should be a subgraph of the current
                       pharmacophore graph).
@@ -588,18 +598,28 @@ class PharmacophoreMatch(PharmacophoreMol):
         return None
 
 
-class Pharmacophore(PharmacophoreMatch):
+class Pharmacophore(__PharmacophoreMatch):
 
     """
-    Class to load/save pharmacophores
+    Main class
 
     """
 
     __feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
 
+    def load_from_mol(self, mol):
+        """
+        Creates pharmacophore from RDKit Mol. Uses default definition of feature SMARTS.
+
+        :param mol: RDKit Mol object
+        :return: nothing
+
+        """
+        self.load_from_smarts(mol, __smarts_patterns)
+
     def load_from_smarts(self, mol, smarts):
         """
-        Create pharmacophore from RDKit Mol and features encoded by SMARTS.
+        Creates pharmacophore from RDKit Mol and features encoded by custom SMARTS.
 
         :param mol: RDKit Mol object
         :param smarts: dictionary of SMARTS of features obtained with `load_smarts` function from `pmapper.util` module
@@ -611,7 +631,7 @@ class Pharmacophore(PharmacophoreMatch):
 
     def load_from_feature_factory(self, mol, factory):
         """
-        Create pharmacophore from RDKit Mol and features encoded by RDKit feature factory.
+        Creates pharmacophore from RDKit Mol and features encoded by custom RDKit feature factory.
 
         :param mol: RDKit Mol object
         :param factory: object of MolChemicalFeatureFactory class
@@ -694,7 +714,7 @@ class Pharmacophore(PharmacophoreMatch):
 
     def load_from_atom_ids(self, mol, atom_features_ids, confId=-1):
         """
-        Create pharmacophore from RDKit Mol and atom ids subsets associated with particular features
+        Creates pharmacophore from RDKit Mol and atom ids subsets associated with particular features
 
         :param mol: RDKit Mol object
         :param atom_features_ids: dictionary where keys are feature labels and values are lists of tuples with atom
@@ -732,7 +752,7 @@ class Pharmacophore(PharmacophoreMatch):
 
     def load_ls_model(self, pml_fname):
         """
-        Read pharmacophore from LigandScout pml-file
+        Reads pharmacophore from LigandScout pml-file
 
         :param pml_fname: file name of a LigandScout pml-file
         :return: nothing
@@ -772,7 +792,7 @@ class Pharmacophore(PharmacophoreMatch):
 
     def save_ls_model(self, fname, name="pmapper_pharmcophore"):
         """
-        Save pharmacophore to LigandScout pml-file.
+        Saves pharmacophore to LigandScout pml-file.
 
         :param fname: pml-file name
         :param name: name of a pharmacophore which would be stored in a file and will be displayed in LigandScout
@@ -816,7 +836,7 @@ class Pharmacophore(PharmacophoreMatch):
 
     def save_to_pma(self, fname, feature_ids=None):
         """
-        Save pharmacophore in json format. This is a native way to store pharmacophore objects in a readable format.
+        Saves pharmacophore in json format. This is a native way to store pharmacophore objects in a readable format.
 
         :param fname: pma-file name
         :param feature_ids: ids of features which should be stored. Default: None (all features).
@@ -830,7 +850,7 @@ class Pharmacophore(PharmacophoreMatch):
 
     def load_from_pma(self, fname):
         """
-        Read pharmacophore from a pma-file.
+        Reads pharmacophore from a pma-file.
 
         :param fname: pma-file name
         :return: nothing
@@ -844,7 +864,7 @@ class Pharmacophore(PharmacophoreMatch):
 
     def load_from_xyz(self, fname):
         """
-        Read pharmacophore from xyz-file.
+        Reads pharmacophore from xyz-file.
 
         :param fname: xyz-file name
         :return: nothing
