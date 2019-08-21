@@ -6,3 +6,4 @@ speed-test
 build
 dist
 pmapper.egg-info
+pmapper/examples/.ipynb_checkpoints

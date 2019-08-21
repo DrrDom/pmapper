@@ -22,7 +22,7 @@ from math import sqrt, asin, pi
 
 from .customize import load_smarts
 
-__smarts_patterns = load_smarts()
+_smarts_patterns = load_smarts()
 
 
 class __PharmacophoreBase():
@@ -615,7 +615,7 @@ class Pharmacophore(__PharmacophoreMatch):
         :return: nothing
 
         """
-        self.load_from_smarts(mol, __smarts_patterns)
+        self.load_from_smarts(mol, _smarts_patterns)
 
     def load_from_smarts(self, mol, smarts):
         """
