@@ -183,6 +183,9 @@ pharmacophore hash generation:
 100 pharmacophores having 20 features: 58.30 s; time per pharmacophore: 0.58300 s
 ```
 
+## Documentation
+Mode documentation can be found here - https://pmapper.readthedocs.io/en/latest/
+
 ## Citation
 Ligand-Based Pharmacophore Modeling Using Novel 3D Pharmacophore Signatures  
 Alina Kutlushina, Aigul Khakimova, Timur Madzhidov, Pavel Polishchuk  
