@@ -37,7 +37,6 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'm2r',
-    'sphinxcontrib.autoprogram',
     'sphinxcontrib.programoutput'
 ]
 
