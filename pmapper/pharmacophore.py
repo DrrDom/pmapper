@@ -9,6 +9,7 @@ import pickle
 import json
 import numpy as np
 import random
+import sys
 
 from rdkit import Chem
 from rdkit.Chem import Conformer, rdMolAlign
@@ -848,3 +849,21 @@ class Pharmacophore(__PharmacophoreMatch):
                 coords = tuple(map(float, coords))
                 feature_coords.append((label, coords))
             self.load_from_feature_coords(tuple(feature_coords))
+
+    def load_from_file(self, fname):
+        """
+        Reads pharmacophore from file. File format will be recognized by extension.
+
+        :param fname: file name
+        :return: nothing
+        """
+        ext = fname.rsplit('.', 1)[1]
+        if ext == 'pml':
+            self.load_ls_model(fname)
+        elif ext == 'pma':
+            self.load_from_pma(fname)
+        elif ext == 'xyz':
+            self.load_from_xyz(fname)
+        else:
+            sys.stderr.write('Unknown extension %s. Pharmacophore was not loaded. '
+                             'Only pml, pma and xyz formats are supported.' % fname)
