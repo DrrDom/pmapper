@@ -47,7 +47,6 @@ class __PharmacophoreBase():
         self.__bin_step = bin_step
         self.__cached = cached
         self.__cache = dict()
-        self.__nx_version = int(nx.__version__.split('.')[0])
 
     @staticmethod
     def __remove_dupl(ls):
@@ -66,14 +65,9 @@ class __PharmacophoreBase():
         self.__update_dists()
 
     def __update_dists(self, bin_step=None):
-        if self.__nx_version == 2:
-            for i, j in combinations(self.__g.nodes(), 2):
-                dist = self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step)
-                self.__g.add_edge(i, j, dist=dist)
-        else:
-            for i, j in combinations(self.__g.nodes(), 2):
-                dist = self.__dist(self.__g.node[i]['xyz'], self.__g.node[j]['xyz'], bin_step)
-                self.__g.add_edge(i, j, dist=dist)
+        for i, j in combinations(self.__g.nodes(), 2):
+            dist = self.__dist(self.__g.nodes[i]['xyz'], self.__g.nodes[j]['xyz'], bin_step)
+            self.__g.add_edge(i, j, dist=dist)
 
     def __dist(self, coord1, coord2, bin_step=None):
         # coord1, coord2 - tuples of (x, y, z)
@@ -88,16 +82,13 @@ class __PharmacophoreBase():
 
     def __get_canon_feature_signatures2(self, ids):
 
-        feature_labels = dict(zip(ids, (self.__g.node[i]['label'] for i in ids)))
+        feature_labels = dict(zip(ids, (self.__g.nodes[i]['label'] for i in ids)))
         feature_signatures = []
         for i in ids:
             sign = []
             for j in ids:
                 if i != j:
-                    if self.__nx_version == 2:
-                        sign.append('%s%i' % (feature_labels[j], self.__g.edges[i, j]['dist']))
-                    else:
-                        sign.append('%s%i' % (feature_labels[j], self.__g.edge[i][j]['dist']))
+                    sign.append('%s%i' % (feature_labels[j], self.__g.edges[i, j]['dist']))
             feature_signatures.append(feature_labels[i] + ''.join(sorted(sign)))
         return tuple(feature_signatures)
 
@@ -166,45 +157,23 @@ class __PharmacophoreBase():
 
                 names, ids = self.__sort_two_lists(feature_names, feature_ids)
 
-                if self.__nx_version == 2:
+                if len(c) == len(feature_names):  # system ABCD
+                    stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
 
-                    if len(c) == len(feature_names):  # system ABCD
+                else:  # system AABB
+
+                    # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
+                    if (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[0], ids[3]]['dist'] and
+                        self.__g.edges[ids[1], ids[2]]['dist'] == self.__g.edges[ids[1], ids[3]]['dist']) or \
+                       (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[1], ids[2]]['dist'] and
+                        self.__g.edges[ids[0], ids[3]]['dist'] - self.__g.edges[ids[1], ids[3]]['dist']):
+                        stereo = 0
+                    else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
+                        if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
+                            ids[2], ids[3] = ids[3], ids[2]
                         stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
-
-                    else:  # system AABB
-
-                        # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
-                        if (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[0], ids[3]]['dist'] and
-                            self.__g.edges[ids[1], ids[2]]['dist'] == self.__g.edges[ids[1], ids[3]]['dist']) or \
-                           (self.__g.edges[ids[0], ids[2]]['dist'] == self.__g.edges[ids[1], ids[2]]['dist'] and
-                            self.__g.edges[ids[0], ids[3]]['dist'] - self.__g.edges[ids[1], ids[3]]['dist']):
-                            stereo = 0
-                        else:  # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
-                            if self.__g.edges[ids[0], ids[2]]['dist'] > self.__g.edges[ids[0], ids[3]]['dist']:
-                                ids[2], ids[3] = ids[3], ids[2]
-                            stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.nodes[i]['xyz'] for i in ids), tol=tol)
-                            # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
-                            stereo += 10 * sign_dihedral_angle(tuple(self.__g.nodes[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
-
-                else:
-
-                    if len(c) == len(feature_names):   # system ABCD
-                        stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
-
-                    else:   # system AABB
-
-                        # if A1-B1 == A1-B2 and A2-B1 == A2-B2 distances or A1-B1 == A2-B1 and A1-B2 == A2-B2 then simplex is achiral
-                        if (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[0]][ids[3]]['dist'] and
-                            self.__g.edge[ids[1]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[3]]['dist']) or \
-                           (self.__g.edge[ids[0]][ids[2]]['dist'] == self.__g.edge[ids[1]][ids[2]]['dist'] and
-                            self.__g.edge[ids[0]][ids[3]]['dist'] - self.__g.edge[ids[1]][ids[3]]['dist']):
-                            stereo = 0
-                        else: # swap B vertices to put on the higher position B vertex with a shorter distance to the first A vertex
-                            if self.__g.edge[ids[0]][ids[2]]['dist'] > self.__g.edge[ids[0]][ids[3]]['dist']:
-                                ids[2], ids[3] = ids[3], ids[2]
-                            stereo = self.__get_quadruplet_stereo(coord=tuple(self.__g.node[i]['xyz'] for i in ids), tol=tol)
-                            # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
-                            stereo += 10 * sign_dihedral_angle(tuple(self.__g.node[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
+                        # modifies the sign to distinguish trapeze and parallelogram-like quadruplets
+                        stereo += 10 * sign_dihedral_angle(tuple(self.__g.nodes[ids[i]]['xyz'] for i in [0, 2, 3, 1]))
 
         return '|'.join(sorted(feature_names)), stereo
 
