@@ -6,7 +6,7 @@ Signatures uniquely encode 3D pharmacophores with hashes suitable for fast ident
 ## Dependency
 
 `rdkit >= 2017.09`  
-`networkx >= 1.11`
+`networkx >= 2`
 
 ## Installation
 ```text
