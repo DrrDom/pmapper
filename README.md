@@ -151,46 +151,82 @@ p = P(cache=True)
 
 ## Speed tests
 Generation of pharmacophore signatures (hashes) is a CPU-bound task. The computation speed depends on the number of features in pharmacophores.  
-Tests were run on 500 compounds (a random subset from Drugbank). Up to 50 conformers were generated for each compound. Up to 100 pharmacophores having a particular number of features were chosen randomly from the whole number of 25000 pharmacophores to generate pharmacophore signatures. Cache was disabled but enabled cache would not affect calculation time for the first time function calls.  
+Tests were run on a random subset of compounds from Drugbank. Up to 50 conformers were generated for each compound.   
 Laptop configuration:
 - Intel(R) Core(TM) i7-5500U CPU @ 2.40GHz
 - 12 GB RAM
 - calculation was run in 1 thread (the module is thread safe and calculations can be parallelized)
 
-```text
-pharmacophore generation: 19.21 s
-total number of pharmacophores: 25000
+To run the speed test use `pmapper_speed_test` command line tool
 
-pharmacophore hash generation:
-50 pharmacophores having 2 features: 0.00 s; time per pharmacophore: 0.00000 s
-100 pharmacophores having 3 features: 0.01 s; time per pharmacophore: 0.00010 s
-100 pharmacophores having 4 features: 0.01 s; time per pharmacophore: 0.00010 s
-100 pharmacophores having 5 features: 0.04 s; time per pharmacophore: 0.00040 s
-100 pharmacophores having 6 features: 0.12 s; time per pharmacophore: 0.00120 s
-100 pharmacophores having 7 features: 0.24 s; time per pharmacophore: 0.00240 s
-100 pharmacophores having 8 features: 0.51 s; time per pharmacophore: 0.00510 s
-100 pharmacophores having 9 features: 0.94 s; time per pharmacophore: 0.00940 s
-100 pharmacophores having 10 features: 1.86 s; time per pharmacophore: 0.01860 s
-100 pharmacophores having 11 features: 3.02 s; time per pharmacophore: 0.03020 s
-100 pharmacophores having 12 features: 4.17 s; time per pharmacophore: 0.04170 s
-100 pharmacophores having 13 features: 7.04 s; time per pharmacophore: 0.07040 s
-100 pharmacophores having 14 features: 9.29 s; time per pharmacophore: 0.09290 s
-100 pharmacophores having 15 features: 12.94 s; time per pharmacophore: 0.12940 s
-100 pharmacophores having 16 features: 17.79 s; time per pharmacophore: 0.17790 s
-100 pharmacophores having 17 features: 23.58 s; time per pharmacophore: 0.23580 s
-100 pharmacophores having 18 features: 33.83 s; time per pharmacophore: 0.33830 s
-100 pharmacophores having 19 features: 40.43 s; time per pharmacophore: 0.40430 s
-100 pharmacophores having 20 features: 58.30 s; time per pharmacophore: 0.58300 s
+```text
+========== Reading of conformers of molecules ==========
+329 molecules were read in 0.0134 s
+
+========== Creation of pharmacophores (with enabled caching) ==========
+1938 pharmacophores were created in 3.17065 s
+
+========== First calculation of hashes ==========
+2 pharmacophores with 0 features - 0.00014s or 7e-05s per pharmacophore
+2 pharmacophores with 1 features - 0.0001s or 5e-05s per pharmacophore
+12 pharmacophores with 2 features - 0.00042s or 3e-05s per pharmacophore
+44 pharmacophores with 3 features - 0.00212s or 5e-05s per pharmacophore
+100 pharmacophores with 4 features - 0.00933s or 9e-05s per pharmacophore
+103 pharmacophores with 5 features - 0.05155s or 0.0005s per pharmacophore
+105 pharmacophores with 6 features - 0.10857s or 0.00103s per pharmacophore
+109 pharmacophores with 7 features - 0.25322s or 0.00232s per pharmacophore
+117 pharmacophores with 8 features - 0.59508s or 0.00509s per pharmacophore
+101 pharmacophores with 9 features - 0.8795s or 0.00871s per pharmacophore
+105 pharmacophores with 10 features - 1.61349s or 0.01537s per pharmacophore
+100 pharmacophores with 11 features - 2.24937s or 0.02249s per pharmacophore
+103 pharmacophores with 12 features - 3.53308s or 0.0343s per pharmacophore
+117 pharmacophores with 13 features - 6.49837s or 0.05554s per pharmacophore
+103 pharmacophores with 14 features - 7.54796s or 0.07328s per pharmacophore
+142 pharmacophores with 15 features - 14.92654s or 0.10512s per pharmacophore
+104 pharmacophores with 16 features - 13.86378s or 0.13331s per pharmacophore
+100 pharmacophores with 17 features - 17.94023s or 0.1794s per pharmacophore
+120 pharmacophores with 18 features - 28.01455s or 0.23345s per pharmacophore
+136 pharmacophores with 19 features - 42.53481s or 0.31276s per pharmacophore
+113 pharmacophores with 20 features - 45.88228s or 0.40604s per pharmacophore
+
+========== Second calculation of hashes of the same pharmacophores ==========
+2 pharmacophores with 0 features - 5e-05s or 2e-05s per pharmacophore
+2 pharmacophores with 1 features - 3e-05s or 1e-05s per pharmacophore
+12 pharmacophores with 2 features - 0.00012s or 1e-05s per pharmacophore
+44 pharmacophores with 3 features - 0.00041s or 1e-05s per pharmacophore
+100 pharmacophores with 4 features - 0.00089s or 1e-05s per pharmacophore
+103 pharmacophores with 5 features - 0.00166s or 2e-05s per pharmacophore
+105 pharmacophores with 6 features - 0.00316s or 3e-05s per pharmacophore
+109 pharmacophores with 7 features - 0.00707s or 6e-05s per pharmacophore
+117 pharmacophores with 8 features - 0.0166s or 0.00014s per pharmacophore
+101 pharmacophores with 9 features - 0.02005s or 0.0002s per pharmacophore
+105 pharmacophores with 10 features - 0.03527s or 0.00034s per pharmacophore
+100 pharmacophores with 11 features - 0.05271s or 0.00053s per pharmacophore
+103 pharmacophores with 12 features - 0.08097s or 0.00079s per pharmacophore
+117 pharmacophores with 13 features - 0.13274s or 0.00113s per pharmacophore
+103 pharmacophores with 14 features - 0.1588s or 0.00154s per pharmacophore
+142 pharmacophores with 15 features - 0.32687s or 0.0023s per pharmacophore
+104 pharmacophores with 16 features - 0.29255s or 0.00281s per pharmacophore
+100 pharmacophores with 17 features - 0.38286s or 0.00383s per pharmacophore
+120 pharmacophores with 18 features - 0.61327s or 0.00511s per pharmacophore
+136 pharmacophores with 19 features - 0.93486s or 0.00687s per pharmacophore
+113 pharmacophores with 20 features - 0.94041s or 0.00832s per pharmacophore
 ```
 
 ## Documentation
-Mode documentation can be found here - https://pmapper.readthedocs.io/en/latest/
+More documentation can be found here - https://pmapper.readthedocs.io/en/latest/
 
 ## Citation
 Ligand-Based Pharmacophore Modeling Using Novel 3D Pharmacophore Signatures  
 Alina Kutlushina, Aigul Khakimova, Timur Madzhidov, Pavel Polishchuk  
 *Molecules* **2018**, 23(12), 3094  
 https://doi.org/10.3390/molecules23123094
+
+##### Further publications
+Virtual Screening Using Pharmacophore Models Retrieved from Molecular Dynamic Simulations  
+Pavel Polishchuk, Alina Kutlushina, Dayana Bashirova, Olena Mokshyna, Timur Madzhidov  
+*Int. J. Mol. Sci.* **2019**, 20(23), 5834  
+https://doi.org/10.3390/ijms20235834
 
 ## License
 BSD-3 clause
