@@ -15,7 +15,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/DrrDom/pmapper",
-    packages=['pmapper'],
+    packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: BSD License",
@@ -31,6 +31,7 @@ setuptools.setup(
         'networkx': ['networkx>=2'],
     },
     entry_points={'console_scripts':
-                      ['get_pharm_counts = pmapper.get_pharm_counts:entry_point']},
+                      ['get_pharm_counts = pmapper.get_pharm_counts:entry_point',
+                       'pmapper_speed_test = pmapper.speedtest.pmapper_speed_test:entry_point']},
     include_package_data=True
 )
