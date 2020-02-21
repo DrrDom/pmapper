@@ -855,6 +855,12 @@ class Pharmacophore(__PharmacophoreMatch):
             self.load_from_feature_coords(tuple(feature_coords))
 
     def save_to_xyz(self, fname):
+        """
+        Save pharmacophoe to xyz format
+
+        :param fname: xyz-file name
+        :return: nothing
+        """
         with open(fname, 'wt') as f:
             f.write('\n')
             f.write(f'bin_step={self.get_bin_step()}\n')
