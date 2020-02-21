@@ -843,12 +843,23 @@ class Pharmacophore(__PharmacophoreMatch):
         with open(fname) as f:
             feature_coords = []
             f.readline()
-            f.readline()
+            line = f.readline().strip()
+            if line:
+                opts = dict(item.split('=') for item in line.split(';'))
+                if 'bin_step' in opts:
+                    self.update(bin_step=float(opts['bin_step']))
             for line in f:
                 label, *coords = line.strip().split()
                 coords = tuple(map(float, coords))
                 feature_coords.append((label, coords))
             self.load_from_feature_coords(tuple(feature_coords))
+
+    def save_to_xyz(self, fname):
+        with open(fname, 'wt') as f:
+            f.write('\n')
+            f.write(f'bin_step={self.get_bin_step()}\n')
+            for i, (x, y, z) in self.get_feature_coords():
+                f.write(f'{i} {x} {y} {z}\n')
 
     def load_from_file(self, fname):
         """
