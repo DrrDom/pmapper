@@ -67,8 +67,10 @@ Pharmacophore class
    Pharmacophore.load_from_pma
    Pharmacophore.load_from_xyz
    Pharmacophore.load_ls_model
+   Pharmacophore.load_from_file
    Pharmacophore.save_ls_model
    Pharmacophore.save_to_pma
+   Pharmacophore.save_to_xyz
    
 
 .. autoclass:: Pharmacophore
