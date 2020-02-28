@@ -98,9 +98,9 @@ class __PharmacophoreBase():
             ids = self.__g.nodes()
         return tuple(sorted(set(ids)))
 
-    def __get_signature_dict(self, ids, tol):
+    def __get_signature_dict(self, ids, tol, ncomb=4):
         d = defaultdict(int)
-        for qudruplet_ids in combinations(ids, min(len(ids), 4)):
+        for qudruplet_ids in combinations(ids, min(len(ids), ncomb)):
             if self.__cached:
                 try:
                     res = self.__cache[qudruplet_ids + (tol,)]
@@ -426,19 +426,23 @@ class __PharmacophoreBase():
                         output[(nbits_, act_bits_, tol_)].add(random.randrange(nbits_))
         return output
 
-    def get_descriptors(self, tol=0):
+    def get_descriptors(self, tol=0, ncomb=4):
         """
         Returns count-based descriptor string of a pharmacophore.
 
         :param tol: tolerance
         :type tol: float
+        :param ncomb: number of feature combinations in descriptors, can be an integer from 1 to 4
+        :type ncomb: int
         :return: dictionary where keys are hashes of feature quadruplets and values are counts of identical quadruples
         :rtype: dict
 
         """
+        if not isinstance(ncomb, int) or ncomb < 1 or ncomb > 4:
+            return tuple()
         ids = self._get_ids(None)
-        d = self.__get_signature_dict(ids, tol)
-        return {k[2:-1].replace("', ", '|').replace(", ", '|'): v for k, v in d.items()}
+        d = self.__get_signature_dict(ids, tol, ncomb)
+        return {k[2:-1].replace("', ", '|').replace(", ", '|') + f'|{self.__bin_step}': v for k, v in d.items()}
 
 
 class __PharmacophoreMol(__PharmacophoreBase):
