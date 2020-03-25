@@ -13,7 +13,7 @@ from .pharmacophore import Pharmacophore
 from .customize import load_smarts
 
 
-def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cached=False):
+def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cached=False, metal_chelators=False):
     """
     Convenience function which loads all conformers of a molecule into a list of pharmacophore objects.
 
@@ -34,7 +34,10 @@ def load_multi_conf_mol(mol, smarts_features=None, factory=None, bin_step=1, cac
     if smarts_features is not None and factory is not None:
         raise ValueError("Only one options should be not None (smarts_features or factory)")
     if smarts_features is None and factory is None:
-        smarts_features = __smarts_patterns
+        if not metal_chelators:
+            smarts_features = __smarts_patterns
+        else:
+            smarts_features = load_smarts(load_metal_chelators=True)
     output = []
     p = Pharmacophore(bin_step, cached)
     if smarts_features is not None:

@@ -13,7 +13,7 @@ from rdkit import Chem
 from rdkit.Chem import ChemicalFeatures
 
 
-def load_smarts(filename=None):
+def load_smarts(filename=None, load_metal_chelators=False):
     """
     Loads custom SMARTS patterns of features from a file.
 
@@ -39,6 +39,8 @@ def load_smarts(filename=None):
                 else:
                     output[tmp[1]].append(q)
     output = {k: tuple(v) for k, v in output.items()}
+    if filename is None and not load_metal_chelators:
+        del output['M']
     return output
 
 

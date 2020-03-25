@@ -581,15 +581,21 @@ class Pharmacophore(__PharmacophoreMatch):
 
     __feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
 
-    def load_from_mol(self, mol):
+    def load_from_mol(self, mol, metal_chelators=False):
         """
         Creates pharmacophore from RDKit Mol. Uses default definition of feature SMARTS.
 
         :param mol: RDKit Mol object
+        :type mol: RDKit Mol
+        :param metal_chelators: use metal chelator features or not
+        :type metal_chelators: bool
         :return: nothing
 
         """
-        self.load_from_smarts(mol, _smarts_patterns)
+        if metal_chelators:
+            self.load_from_smarts(mol, load_smarts(load_metal_chelators=True))
+        else:
+            self.load_from_smarts(mol, _smarts_patterns)
 
     def load_from_smarts(self, mol, smarts):
         """

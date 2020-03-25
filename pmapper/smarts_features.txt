@@ -64,3 +64,9 @@ a1aaaa1 H
 [$([CH2X4,CH1X3,CH0X2]~[$([!#1]);!$([CH2X4,CH1X3,CH0X2])])]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2] H
 [$([CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]~[$([CH2X4,CH1X3,CH0X2]~[$([!#1]);!$([CH2X4,CH1X3,CH0X2])])])]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2]~[CH2X4,CH1X3,CH0X2] H
 [$([S]~[#6])&!$(S~[!#6])] H
+
+# metal chelators
+[$([O])&!$([OX2](C)C=O)&!$(*(~a)~a)] M
+[#7&!$([nX3])&!$([NX3]-*=[!#6])&!$([NX3]-[a])&!$([NX4])&!$(N=C([C,N])N)] M
+[SX2] M
+[$([-,-2,-3])&!$(*[+,+2,+3])] M
