@@ -452,7 +452,7 @@ class __PharmacophoreMol(__PharmacophoreBase):
 
     """
 
-    __feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10}
+    __feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10, 'M': 12}
 
     def __init__(self, bin_step=1, cached=False):
         super().__init__(bin_step, cached)
