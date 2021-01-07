@@ -434,7 +434,11 @@ class __PharmacophoreBase():
         :type tol: float
         :param ncomb: number of feature combinations in descriptors, can be an integer from 1 to 4
         :type ncomb: int
-        :return: dictionary where keys are hashes of feature quadruplets and values are counts of identical quadruples
+        :return: dictionary where keys are signatures of quadruplets and values are counts of quadruples with
+                 identical signatures.
+                 Signature of a quadruplet is for example 'AA2A2D2|AA2A3D0|AA2A3D3|DA0A2A3|0|0|1';
+                 first blocks are signatures of separate features, then configuration sign, tolerance and
+                 binning step value.
         :rtype: dict
 
         """
