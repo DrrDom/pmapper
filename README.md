@@ -144,9 +144,9 @@ p.load_from_pma('filename.pma')
 Pharmacophores can be saved/loaded from LigandScout pml-files. Also pharmacophores can be read from xyz-files.
 
 ### Caching
-Pharmacophores can be created with enabled `cache` argument. This will speed up all futher repeated calls to retrive hash, fingerprints or descriptors.
+Pharmacophores can be created with enabled `cached` argument. This will speed up all futher repeated calls to retrive hash, fingerprints or descriptors.
 ```python
-p = P(cache=True)
+p = P(cached=True)
 ```
 
 ## Speed tests
