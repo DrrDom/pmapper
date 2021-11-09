@@ -862,18 +862,20 @@ class Pharmacophore(__PharmacophoreMatch):
                 feature_coords.append((label, coords))
             self.load_from_feature_coords(tuple(feature_coords))
 
-    def save_to_xyz(self, fname, feature_ids=None):
+    def save_to_xyz(self, fname, feature_ids=None, ndigits=2):
         """
         Save pharmacophoe to xyz format
 
         :param fname: xyz-file name
+        :param feature_ids: ids of features which should be stored. Default: None (all features).
+        :param ndigits: number of digits after the dot to save coordinates
         :return: nothing
         """
         with open(fname, 'wt') as f:
             f.write('\n')
             f.write(f'bin_step={self.get_bin_step()}\n')
             for i, (x, y, z) in self.get_feature_coords(feature_ids):
-                f.write(f'{i} {x} {y} {z}\n')
+                f.write(f'{i} {round(x, ndigits)} {round(y, ndigits)} {round(z, ndigits)}\n')
 
     def load_from_file(self, fname):
         """
