@@ -296,6 +296,17 @@ class __PharmacophoreBase():
         else:
             return [(v['label'], v['xyz']) for k, v in self.__g.nodes(data=True) if k in set(ids)]
 
+    def get_feature_ids(self):
+        """
+        Returns a dict of feature labels and a tuple of corresponding features ids
+
+        :return: dist {label: (id1, id2, ...), ...}
+        """
+        output = defaultdict(list)
+        for i, data in self.__g.nodes(data=True):
+            output[data['label']].append(i)
+        return {k: tuple(v) for k, v in output.items()}
+
     def get_mirror_pharmacophore(self):
         """
         Returns a new mirrored Pharmacophore instance.
