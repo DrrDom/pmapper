@@ -5,7 +5,6 @@
 #==============================================================================
 
 import networkx as nx
-import pickle
 import json
 import numpy as np
 import random
@@ -112,9 +111,13 @@ class __PharmacophoreBase():
             d[res] += 1
         return d
 
-    def __get_full_hash(self, ids=None, tol=0):
+    def __get_full_hash(self, ids=None, tol=0, hex=True):
         d = self.__get_signature_dict(ids, tol)
-        return md5(pickle.dumps(str(tuple(sorted(d.items()))))).hexdigest()
+        h = md5(str(tuple(sorted(d.items()))).encode())
+        if hex:
+            return h.hexdigest()
+        else:
+            return h.digest()
 
     def __gen_quadruplet_canon_name_stereo(self, feature_ids, tol=0):
         # return canon quadruplet signature and stereo
@@ -261,7 +264,7 @@ class __PharmacophoreBase():
         data = self.__g.nodes(data=True)
         return Counter([item[1]['label'] for item in data])
 
-    def get_signature_md5(self, ids=None, tol=0):
+    def get_signature_md5(self, ids=None, tol=0, hex=True):
         """
         Returns pharmacophore hash.
 
@@ -271,11 +274,13 @@ class __PharmacophoreBase():
                     between an edge and a plane formed by other three features. Quadruplets having at least one angle
                     less than tolerance value are assigned 0 chirality.
         :type tol: float
+        :param hex: return hex representation (True) or binary (False)
+        :type hex: bool
         :return: md5 hash of a pharmacophore
         :rtype: str
 
         """
-        return self.__get_full_hash(self._get_ids(ids), tol)
+        return self.__get_full_hash(self._get_ids(ids), tol, hex)
 
     def get_feature_coords(self, ids=None):
         """
