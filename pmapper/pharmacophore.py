@@ -48,6 +48,9 @@ class __PharmacophoreBase():
         self.__cached = cached
         self.__cache = dict()
 
+    def __drop_cache(self):
+        self.__cache = dict()
+
     @staticmethod
     def __remove_dupl(ls):
         # remove duplicates preserving the order of items
@@ -62,6 +65,17 @@ class __PharmacophoreBase():
         self.__g.clear()
         for i, (label, coords) in enumerate(feature_coords):
             self.__g.add_node(i, label=label, xyz=coords)
+        self.__update_dists()
+
+    def add_feature(self, label, xyz):
+        """
+        Add a feature with its coordinates to the pharmacophore
+        :param label: text label of the feature
+        :param xyz: tuple of xyz coordinates of the feature
+        :return:
+        """
+        self.__g.add_node(max(list(self.__g.nodes)) + 1, label=label, xyz=tuple(xyz))
+        self.__drop_cache()
         self.__update_dists()
 
     def __update_dists(self, bin_step=None):
