@@ -72,11 +72,13 @@ class __PharmacophoreBase():
         Add a feature with its coordinates to the pharmacophore
         :param label: text label of the feature
         :param xyz: tuple of xyz coordinates of the feature
-        :return:
+        :return: id of the added feature
         """
-        self.__g.add_node(max(list(self.__g.nodes)) + 1, label=label, xyz=tuple(xyz))
+        feature_id = max(list(self.__g.nodes)) + 1
+        self.__g.add_node(feature_id, label=label, xyz=tuple(xyz))
         self.__drop_cache()
         self.__update_dists()
+        return feature_id
 
     def __update_dists(self, bin_step=None):
         for i, j in combinations(self.__g.nodes(), 2):
