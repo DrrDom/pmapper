@@ -74,7 +74,10 @@ class __PharmacophoreBase():
         :param xyz: tuple of xyz coordinates of the feature
         :return: id of the added feature
         """
-        feature_id = max(list(self.__g.nodes)) + 1
+        if self.__g.nodes:
+            feature_id = max(list(self.__g.nodes)) + 1
+        else:
+            feature_id = 0
         self.__g.add_node(feature_id, label=label, xyz=tuple(xyz))
         self.__drop_cache()
         self.__update_dists()
