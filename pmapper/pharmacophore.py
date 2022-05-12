@@ -491,7 +491,7 @@ class __PharmacophoreMol(__PharmacophoreBase):
 
     """
 
-    __feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10}
+    __feat_dict_mol = {'A': 89, 'P': 15, 'N': 7, 'H': 1, 'D': 66, 'a': 10, 'T': 11}
 
     def __init__(self, bin_step=1, cached=False):
         super().__init__(bin_step, cached)
@@ -929,3 +929,49 @@ class Pharmacophore(__PharmacophoreMatch):
         else:
             sys.stderr.write('Unknown extension %s. Pharmacophore was not loaded. '
                              'Only pml, pma and xyz formats are supported.' % fname)
+
+    def load_from_pharmit(self, fname):
+        """
+        Reads pharmacophore from pharmit json-file. Only enabled features will be read. Directed features will be
+        reduced to undirected ones (arrows to spheres). Radius will be ignored at read.
+
+        :param fname: json-file name with a pharmit pharmacophore model
+        :return: nothing
+        """
+        feature_names_dict = {'HydrogenDonor': 'D', 'HydrogenAcceptor': 'A', 'NegativeIon': 'N', 'PositiveIon': 'P',
+                              'Hydrophobic': 'H', 'Aromatic': 'a'}
+
+        coords = []
+        p = json.load(open(fname))['points']
+        for i in p:
+            if i['enabled']:
+                # use pmapper feature labels if they are in the list of pre-defined (standard) features
+                label = feature_names_dict[i['name']] if i['name'] in feature_names_dict.keys() else i['name']
+                coords.append((label, (i['x'], i['y'], i['z'])))
+        self.load_from_feature_coords(tuple(coords))
+
+    def save_to_pharmit(self, fname, feature_ids=None, ndigits=2):
+        """
+        Save pharmacophore in pharmit format. All radius will be set to bin_step of the pharmacophore. Labels absent
+        in the standard feature dictionary will be saved as is.
+
+        :param fname: json-file name
+        :param feature_ids: ids of features which should be stored. Default: None (all features).
+        :param ndigits: number of digits after the dot to save coordinates
+        :return: nothing
+        """
+        feature_names_dict = {'D': 'HydrogenDonor', 'A': 'HydrogenAcceptor', 'N': 'NegativeIon', 'P': 'PositiveIon',
+                              'H': 'Hydrophobic', 'a': 'Aromatic'}
+
+        data = {'points': []}
+        bin_step = self.get_bin_step()
+        for label, (x, y, z) in self.get_feature_coords(ids=feature_ids):
+            label = feature_names_dict[label] if label in feature_names_dict.keys() else label
+            data['points'].append({'name': label,
+                                   'x': round(x, ndigits),
+                                   'y': round(y, ndigits),
+                                   'z': round(z, ndigits),
+                                   'radius': bin_step,
+                                   'enabled': True})
+        with open(fname, 'wt') as f:
+            json.dump(data, f, indent=4)
