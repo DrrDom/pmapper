@@ -9,11 +9,12 @@ import json
 import numpy as np
 import random
 import sys
+import warnings
 
 from rdkit import Chem
 from rdkit.Chem import Conformer, rdMolAlign
 from rdkit.Geometry import Point3D
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, OrderedDict
 from itertools import combinations, product
 from hashlib import md5
 from xml.dom import minidom
@@ -56,7 +57,10 @@ class __PharmacophoreBase():
         # remove duplicates preserving the order of items
         seen = set()
         seen_add = seen.add
-        return [x for x in ls if not (x in seen or seen_add(x))]
+        output = [x for x in ls if not (x in seen or seen_add(x))]
+        if len(output) < len(ls):
+            warnings.warn('Features with identical labels and coordinates were found and duplicates were removed')
+        return output
 
     def load_from_feature_coords(self, feature_coords):
         # feature_coords: [('A', (1.23, 2.34, 3.45)), ('A', (4.56, 5.67, 6.78)), ...]
@@ -461,7 +465,7 @@ class __PharmacophoreBase():
                         output[(nbits_, act_bits_, tol_)].add(random.randrange(nbits_))
         return output
 
-    def get_descriptors(self, tol=0, ncomb=4):
+    def get_descriptors(self, tol=0, ncomb=4, ids=None):
         """
         Returns count-based descriptor string of a pharmacophore.
 
@@ -469,6 +473,8 @@ class __PharmacophoreBase():
         :type tol: float
         :param ncomb: number of feature combinations in descriptors, can be an integer from 1 to 4
         :type ncomb: int
+        :param ids: feature ids used to calculate descriptors
+        :type ids: list
         :return: dictionary where keys are signatures of quadruplets and values are counts of quadruples with
                  identical signatures.
                  Signature of a quadruplet is for example 'AA2A2D2|AA2A3D0|AA2A3D3|DA0A2A3|0|0|1';
@@ -479,7 +485,7 @@ class __PharmacophoreBase():
         """
         if not isinstance(ncomb, int) or ncomb < 1 or ncomb > 4:
             return tuple()
-        ids = self._get_ids(None)
+        ids = self._get_ids(ids)
         d = self.__get_signature_dict(ids, tol, ncomb)
         return {k[2:-1].replace("', ", '|').replace(", ", '|') + f'|{self.__bin_step}': v for k, v in d.items()}
 
@@ -611,14 +617,17 @@ class __PharmacophoreMatch(__PharmacophoreMol):
         return None
 
 
-class Pharmacophore(__PharmacophoreMatch):
+class __PharmacophoreLoadedMol(__PharmacophoreMatch):
 
     """
-    Main class
-
+    This class manages a loaded molecule
     """
 
-    __feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
+    def __init__(self, bin_step=1, cached=False):
+        super().__init__(bin_step, cached)
+        self.atom_ids = None    # will store list of tuples (('A', (1,)), ('P', (5,6,7)), ...),
+                                # the order should be preserved while reading to keep the correspondence with
+                                # feature ids which will be computed in load_from_feature_coords
 
     def load_from_mol(self, mol):
         """
@@ -672,26 +681,24 @@ class Pharmacophore(__PharmacophoreMatch):
                 res.append(tuple(item))
         return tuple(res)
 
-    @staticmethod
-    def _get_features_atom_ids_factory(mol, factory):
+    def _get_features_atom_ids_factory(self, mol, factory):
         """
         function works with RDKit feature factory
         output is dict
         {'N': ((1,), (4,5,6)), 'P': ((2,)), 'a': ((7,8,9,10,11)), ...}
         """
         features = factory.GetFeaturesForMol(Chem.AddHs(mol))
-        output = dict()
+        output = OrderedDict()
         for f in features:
             name = f.GetFamily()
             if name in output:
                 output[name].append(f.GetAtomIds())
             else:
                 output[name] = [f.GetAtomIds()]
-        output = {k: Pharmacophore.__filter_features(v) for k, v in output.items()}
+        output = {k: self.__filter_features(v) for k, v in output.items()}
         return output
 
-    @staticmethod
-    def _get_features_atom_ids(mol, smarts_features):
+    def _get_features_atom_ids(self, mol, smarts_features):
         """
         function works with explicit smarts definitions of features
         output is dict
@@ -707,7 +714,7 @@ class Pharmacophore(__PharmacophoreMatch):
             ids = [tuple(sorted(i)) for i in ids]
             return ids
 
-        output = dict()
+        output = OrderedDict()
 
         m = Chem.AddHs(mol)
 
@@ -719,7 +726,7 @@ class Pharmacophore(__PharmacophoreMatch):
                     tmp.extend(ids)
             # exclude features if their atom ids is full subset of another feature of the same type
             if tmp:
-                res = Pharmacophore.__filter_features(tmp)
+                res = self.__filter_features(tmp)
                 output[name] = tuple(res)  # tuple of tuples with atom ids
             else:
                 output[name] = tuple(tmp)  # empty set of ids
@@ -756,12 +763,53 @@ class Pharmacophore(__PharmacophoreMatch):
                     z += coord.z
                 return x / len(ids), y / len(ids), z / len(ids)
 
+        self.atom_ids = []
         feature_coords = []
         for name, features in atom_features_ids.items():
             for feature in features:
                 feature_coords.append((name, get_feature_coord(mol, feature)))
+                self.atom_ids.append((name, feature))
         self.load_from_feature_coords(feature_coords)
+        self.atom_ids = tuple(self.atom_ids)
         return 0
+
+    def get_descriptors_atom_exclusion(self, natoms, tol=0, ncomb=4):
+        """
+        Return descriptors for subsets of features excluding every atom in an input molecule
+
+        :param natoms: total number of heavy atoms in a molecule
+        :type natoms: int
+        :param tol: tolerance
+        :type tol: float
+        :param ncomb: number of feature combinations in descriptors, can be an integer from 1 to 4
+        :type ncomb: int
+        :return: list of dictionaries where keys are signatures of quadruplets and values are counts of quadruples with
+                 identical signatures.
+                 Signature of a quadruplet is for example 'AA2A2D2|AA2A3D0|AA2A3D3|DA0A2A3|0|0|1';
+                 first blocks are signatures of separate features, then configuration sign, tolerance and
+                 binning step value.
+                 Every entry of the list is the descriptors calculated with removal of an atom of
+                 the corresponding index, the first entry - the first atom was removed.
+        :rtype: dict
+        """
+        output = []
+        for i in range(natoms):
+            ids = []
+            for j, item in enumerate(self.atom_ids):
+                if i not in item[1]:
+                    ids.append(j)
+            output.append(self.get_descriptors(tol=tol, ncomb=ncomb, ids=ids))
+        return output
+
+
+class Pharmacophore(__PharmacophoreLoadedMol):
+
+    """
+    Main class
+
+    """
+
+    __feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
 
     def load_ls_model(self, pml_fname):
         """
