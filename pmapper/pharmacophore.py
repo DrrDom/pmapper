@@ -10,6 +10,7 @@ import json
 import numpy as np
 import random
 import sys
+import warnings
 
 from rdkit import Chem
 from rdkit.Chem import Conformer, rdMolAlign
@@ -56,7 +57,7 @@ class __PharmacophoreBase():
         seen_add = seen.add
         output = [x for x in ls if not (x in seen or seen_add(x))]
         if len(output) < len(ls):
-            sys.stderr.write('Duplicated features were found\n')
+            warnings.warn('Features with identical labels and coordinates were found and duplicates were removed')
         return output
 
     def load_from_feature_coords(self, feature_coords):
