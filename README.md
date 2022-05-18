@@ -13,6 +13,16 @@ Signatures uniquely encode 3D pharmacophores with hashes suitable for fast ident
 pip install pmapper
 ```
 
+## Changelog
+**1.0.0**
+- added functionality to calculate 3D pharmacophore descriptors for molecules with exclusion of single atoms (for the purpose of model interpretation)
+- added convenience function get_feature_ids
+- added function add_feature to manually edit/construct a pharmacophore
+- added save/load of pharmit pharmacophore models
+
+
+- IMPORTANT: changed the hashing procedure to make it more stable (pickle dependency was removed). This breaks compatibility with previously generated md5 hashes with `get_signature_md5`, `iterate_pharm` and `iterate_pharm1` functions, all other functionality was not affected. 
+
 ## Examples
 
 ### Load modules
