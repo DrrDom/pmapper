@@ -23,6 +23,9 @@ pip install pmapper
 
 - IMPORTANT: changed the hashing procedure to make it more stable (pickle dependency was removed). This breaks compatibility with previously generated md5 hashes with `get_signature_md5`, `iterate_pharm` and `iterate_pharm1` functions, all other functionality was not affected. 
 
+**1.0.1**
+- fit_model function can return rms by request
+
 ## Examples
 
 ### Load modules

@@ -546,8 +546,8 @@ class __PharmacophoreMatch(__PharmacophoreMol):
         self.__nm = iso.categorical_node_match('label', '_')
         self.__em = iso.numerical_edge_match('dist', 0)
 
-    def __get_transformation_matrix(self, model, mapping):
-        return rdMolAlign.GetAlignmentTransform(self.get_mol(), model.get_mol(), atomMap=tuple(mapping.items()))[1]
+    def __get_transformation_matrix_and_rms(self, model, mapping):
+        return rdMolAlign.GetAlignmentTransform(self.get_mol(), model.get_mol(), atomMap=tuple(mapping.items()))
 
     def __fit_graph(self, model):
         if self.get_bin_step() != 0:
@@ -556,7 +556,7 @@ class __PharmacophoreMatch(__PharmacophoreMol):
             gm = iso.GraphMatcher(self._PharmacophoreBase__g, model, node_match=self.__nm, edge_match=iso.numerical_edge_match('dist', 0, atol=0.75))
         return gm
 
-    def fit_model(self, model, n_omitted=0, essential_features=None, tol=0, get_transform_matrix=False):
+    def fit_model(self, model, n_omitted=0, essential_features=None, tol=0, get_transform_matrix=False, get_rms=False):
         """
         Matches the supplied pharmacophore model.
 
@@ -572,9 +572,12 @@ class __PharmacophoreMatch(__PharmacophoreMol):
         :param get_transform_matrix: if set, the function will return a transformation matrix as an additional output
                                      to align the pharmacopore to a model
         :type get_transform_matrix: bool
-        :return: tuple of feature ids of a model matching the pharmacophore or a 2-tuple where the first item is
-                 tuple of feature ids of a model matching the pharmacophore and the seond item is
-                 a transformation matrix. If no matching `None` will be returned.
+        :param get_rms: if set True, the function will return rms value of matched pharmacophore
+        :return: None if a model does not match; if matched the output depends on set arguments.
+                 By default output is a tuple of feature ids of a model matching the pharmacophore.
+                 If get_transform_matrix or get_rms arguments were set to True the output will be 2 or 3-tuple, where
+                 the first item if a tuple of matched features ids, the next items are a transformation matrix and/or
+                 rms value.
 
         """
 
@@ -600,20 +603,34 @@ class __PharmacophoreMatch(__PharmacophoreMol):
                         if j == 0:
                             ref = model.get_signature_md5(ids=tuple(mapping.values()), tol=tol)
                         if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
-                            if get_transform_matrix:
-                                return tuple(mapping.values()), self.__get_transformation_matrix(model, mapping)
+                            output = tuple(mapping.values())
+                            if get_transform_matrix or get_rms:
+                                output = (output,)
+                                rms, matrix = self.__get_transformation_matrix_and_rms(model, mapping)
+                                if get_transform_matrix:
+                                    output += (matrix, )
+                                if get_rms:
+                                    output += (rms, )
+                                return output
                             else:
-                                return tuple(mapping.values())
+                                return output
         else:
             gm = self.__fit_graph(model._PharmacophoreBase__g)
             for j, mapping in enumerate(gm.subgraph_isomorphisms_iter()):
                 if j == 0:
                     ref = model.get_signature_md5(tol=tol)
                 if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
-                    if get_transform_matrix:
-                        return tuple(ids), self.__get_transformation_matrix(model, mapping)
+                    output = tuple(mapping.values())
+                    if get_transform_matrix or get_rms:
+                        output = (output, )
+                        rms, matrix = self.__get_transformation_matrix_and_rms(model, mapping)
+                        if get_transform_matrix:
+                            output += (matrix, )
+                        if get_rms:
+                            output += (rms, )
+                        return output
                     else:
-                        return tuple(ids)
+                        return output
         return None
 
 
