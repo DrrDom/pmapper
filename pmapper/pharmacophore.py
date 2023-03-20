@@ -570,14 +570,14 @@ class __PharmacophoreMatch(__PharmacophoreMol):
         :param tol: tolerance
         :type tol: float
         :param get_transform_matrix: if set, the function will return a transformation matrix as an additional output
-                                     to align the pharmacopore to a model
+                                     to align the pharmacophore to a model
         :type get_transform_matrix: bool
         :param get_rms: if set True, the function will return rms value of matched pharmacophore
         :return: None if a model does not match; if matched the output depends on set arguments.
-                 By default output is a tuple of feature ids of a model matching the pharmacophore.
-                 If get_transform_matrix or get_rms arguments were set to True the output will be 2 or 3-tuple, where
-                 the first item if a tuple of matched features ids, the next items are a transformation matrix and/or
-                 rms value.
+                 By default output is a dictionary of current pharmacophore feature ids (keys) and mapped model feature
+                 ids (values). If get_transform_matrix or get_rms arguments were set to True the output will be
+                 2 or 3-tuple, where the first item if a tuple of matched features ids, the next items are
+                 a transformation matrix and/or rms value.
 
         """
 
@@ -603,7 +603,7 @@ class __PharmacophoreMatch(__PharmacophoreMol):
                         if j == 0:
                             ref = model.get_signature_md5(ids=tuple(mapping.values()), tol=tol)
                         if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
-                            output = tuple(mapping.values())
+                            output = mapping
                             if get_transform_matrix or get_rms:
                                 output = (output,)
                                 rms, matrix = self.__get_transformation_matrix_and_rms(model, mapping)
@@ -620,7 +620,7 @@ class __PharmacophoreMatch(__PharmacophoreMol):
                 if j == 0:
                     ref = model.get_signature_md5(tol=tol)
                 if self.get_signature_md5(ids=tuple(mapping.keys()), tol=tol) == ref:
-                    output = tuple(mapping.values())
+                    output = mapping
                     if get_transform_matrix or get_rms:
                         output = (output, )
                         rms, matrix = self.__get_transformation_matrix_and_rms(model, mapping)

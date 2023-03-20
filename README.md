@@ -26,6 +26,9 @@ pip install pmapper
 **1.0.1**
 - fit_model function can return rms by request
 
+**1.0.2**
+- fit_model function now returns a dict of mapped feature ids
+
 ## Examples
 
 ### Load modules
