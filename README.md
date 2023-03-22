@@ -24,10 +24,14 @@ pip install pmapper
 - IMPORTANT: changed the hashing procedure to make it more stable (pickle dependency was removed). This breaks compatibility with previously generated md5 hashes with `get_signature_md5`, `iterate_pharm` and `iterate_pharm1` functions, all other functionality was not affected. 
 
 **1.0.1**
-- fit_model function can return rms by request
+- `fit_model` function can return rms by request
 
 **1.0.2**
-- fit_model function now returns a dict of mapped feature ids
+- `fit_model` function now returns a dict of mapped feature ids
+
+**1.0.3**
+- add `get_subpharmacophore` function
+- fix `get_mirror_pharmacophore` function to use the same bin step and cached args as for the source pharmacophore instance 
 
 ## Examples
 
