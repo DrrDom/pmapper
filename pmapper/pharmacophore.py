@@ -333,18 +333,6 @@ class __PharmacophoreBase():
             output[data['label']].append(i)
         return {k: tuple(v) for k, v in output.items()}
 
-    def get_mirror_pharmacophore(self):
-        """
-        Returns a new mirrored Pharmacophore instance.
-
-        :return: a new instance of a Pharmacophore class with all features mirrored in yz-plane.
-
-        """
-        p = Pharmacophore()
-        coords = tuple((label, (-x, y, z)) for label, (x, y, z) in self.get_feature_coords())
-        p.load_from_feature_coords(coords)
-        return p
-
     def update(self, bin_step=None, cached=None):
         """
         Changes parameters of the pharmacophore instance.
@@ -822,10 +810,10 @@ class __PharmacophoreLoadedMol(__PharmacophoreMatch):
         return output
 
 
-class Pharmacophore(__PharmacophoreLoadedMol):
+class __PharmacophoreFiles(__PharmacophoreLoadedMol):
 
     """
-    Main class
+    The class to support reading and writing pharmacophores in different formats
 
     """
 
@@ -1043,3 +1031,37 @@ class Pharmacophore(__PharmacophoreLoadedMol):
                                    'enabled': True})
         with open(fname, 'wt') as f:
             json.dump(data, f, indent=4)
+
+
+class Pharmacophore(__PharmacophoreFiles):
+
+    """
+    Main class
+
+    """
+
+    def get_mirror_pharmacophore(self):
+        """
+        Returns a new mirrored Pharmacophore instance. Bin step and cached arguments will be the same as for
+        the source instance.
+
+        :return: a new instance of a Pharmacophore class with all features mirrored in yz-plane.
+
+        """
+        p = Pharmacophore(bin_step=self.get_bin_step(), cached=self._get_cached())
+        coords = tuple((label, (-x, y, z)) for label, (x, y, z) in self.get_feature_coords())
+        p.load_from_feature_coords(coords)
+        return p
+
+    def get_subpharmacophore(self, ids=None):
+        """
+        Returns a new Pharmacophore instance with chosen features. Bin step and cached arguments will be the same as
+        for the source instance.
+
+        :param ids: a list of chosen feature ids or None (all features)
+        :return: a new instance containing only selected feature.
+
+        """
+        p = Pharmacophore(bin_step=self.get_bin_step(), cached=self._get_cached())
+        p.load_from_feature_coords(self.get_feature_coords(ids=ids))
+        return p
