@@ -52,6 +52,9 @@ class __PharmacophoreBase():
     def __drop_cache(self):
         self.__cache = dict()
 
+    def _get_cached(self):
+        return self.__cached
+
     @staticmethod
     def __remove_dupl(ls):
         # remove duplicates preserving the order of items
