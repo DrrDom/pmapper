@@ -27,9 +27,9 @@ setuptools.setup(
     extras_require={
         'rdkit': ['rdkit>=2017.09'],
     },
-    install_require={
-        'networkx': ['networkx>=2'],
-    },
+    install_requires=[
+        'networkx>=2'
+    ],
     entry_points={'console_scripts':
                       ['get_pharm_counts = pmapper.get_pharm_counts:entry_point',
                        'pmapper_speed_test = pmapper.speedtest.pmapper_speed_test:entry_point']},
