@@ -31,7 +31,11 @@ pip install pmapper
 
 **1.0.3**
 - add `get_subpharmacophore` function
-- fix `get_mirror_pharmacophore` function to use the same bin step and cached args as for the source pharmacophore instance 
+- fix `get_mirror_pharmacophore` function to use the same bin step and cached args as for the source pharmacophore instance  
+
+**1.0.4**
+- fix installation of dependency `networkx`
+- add citations on examples of `pmapper` descriptors used for machine learning
 
 ## Examples
 
@@ -243,10 +247,24 @@ Alina Kutlushina, Aigul Khakimova, Timur Madzhidov, Pavel Polishchuk
 https://doi.org/10.3390/molecules23123094
 
 ##### Further publications
+
+###### MD pharmacophores
 Virtual Screening Using Pharmacophore Models Retrieved from Molecular Dynamic Simulations  
 Pavel Polishchuk, Alina Kutlushina, Dayana Bashirova, Olena Mokshyna, Timur Madzhidov  
 *Int. J. Mol. Sci.* **2019**, 20(23), 5834  
 https://doi.org/10.3390/ijms20235834
+
+###### Pmapper descriptors in machine learning
+QSAR Modeling Based on Conformation Ensembles Using a Multi-Instance Learning Approach  
+Zankov, D. V.; Matveieva, M.; Nikonenko, A. V.; Nugmanov, R. I.; Baskin, I. I.; Varnek, A.; Polishchuk, P.; Madzhidov, T. I.  
+*J. Chem. Inf. Model.* **2021**, 61 (10), 4913-4923
+https://doi.org/10.1021/acs.jcim.1c00692  
+  
+Multi-Instance Learning Approach to the Modeling of Enantioselectivity of Conformationally Flexible Organic Catalysts  
+Zankov, D.; Madzhidov, T.; Polishchuk, P.; Sidorov, P.; Varnek, A.  
+*J. Chem. Inf. Model.* **2023**, 63 (21), 6629-6641  
+https://doi.org/10.1021/acs.jcim.3c00393  
+
 
 ## License
 BSD-3 clause
