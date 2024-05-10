@@ -37,6 +37,9 @@ pip install pmapper
 - fix installation of dependency `networkx`
 - add citations on examples of `pmapper` descriptors used for machine learning
 
+**1.1**
+- change SMARTS pattern to avoid matching positively charge nitrogen atoms as H-bond acceptors
+
 ## Examples
 
 ### Load modules
