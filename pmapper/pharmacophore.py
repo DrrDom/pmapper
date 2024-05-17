@@ -840,6 +840,14 @@ class __PharmacophoreFiles(__PharmacophoreLoadedMol):
                 for pos in p.getElementsByTagName('position'):
                     c = tuple(float(pos.getAttribute(i)) for i in ('x3', 'y3', 'z3'))
                     coord.append((feature_name, c))
+        for p in d.getElementsByTagName('plane'):
+            feature_name = feature_names_dict[p.getAttribute('name')]
+            optional = p.getAttribute('optional')
+            disabled = p.getAttribute('disabled')
+            if optional == disabled == 'false':
+                for pos in p.getElementsByTagName('position'):
+                    c = tuple(float(pos.getAttribute(i)) for i in ('x3', 'y3', 'z3'))
+                    coord.append((feature_name, c))
         for p in d.getElementsByTagName('vector'):
             feature_name = feature_names_dict[p.getAttribute('name')]
             optional = p.getAttribute('optional')
