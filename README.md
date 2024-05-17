@@ -40,6 +40,9 @@ pip install pmapper
 **1.1**
 - change SMARTS pattern to avoid matching positively charge nitrogen atoms as H-bond acceptors
 
+**1.1.1**
+- fix missing aromatic features when reading LigandScout models
+
 ## Examples
 
 ### Load modules
