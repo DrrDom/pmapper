@@ -43,6 +43,9 @@ pip install pmapper
 **1.1.1**
 - fix missing aromatic features when reading LigandScout models
 
+**1.1.2**
+- add treatment of exclusion volume features in LigandScout files
+
 ## Examples
 
 ### Load modules
