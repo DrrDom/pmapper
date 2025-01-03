@@ -817,7 +817,7 @@ class __PharmacophoreFiles(__PharmacophoreLoadedMol):
 
     """
 
-    __feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR"}
+    __feat_dict_ls = {"A": "HBA", "H": "H", "D": "HBD", "P": "PI", "N": "NI", "a": "AR", "e": "exclusion"}
 
     def load_ls_model(self, pml_fname):
         """
@@ -828,7 +828,7 @@ class __PharmacophoreFiles(__PharmacophoreLoadedMol):
 
         """
 
-        feature_names_dict = {'HBD': 'D', 'HBA': 'A', 'NI': 'N', 'PI': 'P', 'H': 'H', 'AR': 'a'}
+        feature_names_dict = {'HBD': 'D', 'HBA': 'A', 'NI': 'N', 'PI': 'P', 'H': 'H', 'AR': 'a', 'exclusion': 'e'}
         coord = []
 
         d = minidom.parse(pml_fname)
@@ -884,7 +884,9 @@ class __PharmacophoreFiles(__PharmacophoreLoadedMol):
         doc.appendChild(root)
         for i, feature in enumerate(coords):
             if feature[0] in self.__feat_dict_ls:
-                if feature[0] != "a":
+                if feature[0] == "e":
+                    point = doc.createElement('volume')
+                elif feature[0] != "a":
                     point = doc.createElement('point')
                 else:
                     point = doc.createElement('plane')
