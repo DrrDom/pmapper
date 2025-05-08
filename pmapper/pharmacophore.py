@@ -958,9 +958,12 @@ class __PharmacophoreFiles(__PharmacophoreLoadedMol):
                 if 'bin_step' in opts:
                     self.update(bin_step=float(opts['bin_step']))
             for line in f:
-                label, *coords = line.strip().split()
-                coords = tuple(map(float, coords))
-                feature_coords.append((label, coords))
+                if line.strip():  # skip empty lines
+                    label, *coords = line.strip().split()
+                    if len(coords) != 3:
+                        raise ValueError(f"The line '{line.strip()}' does not has 3 coordinate values'")
+                    coords = tuple(map(float, coords))
+                    feature_coords.append((label, coords))
             self.load_from_feature_coords(tuple(feature_coords))
 
     def save_to_xyz(self, fname, feature_ids=None, ndigits=2):

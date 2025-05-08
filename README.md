@@ -13,39 +13,6 @@ Signatures uniquely encode 3D pharmacophores with hashes suitable for fast ident
 pip install pmapper
 ```
 
-## Changelog
-**1.0.0**
-- added functionality to calculate 3D pharmacophore descriptors for molecules with exclusion of single atoms (for the purpose of model interpretation)
-- added convenience function get_feature_ids
-- added function add_feature to manually edit/construct a pharmacophore
-- added save/load of pharmit pharmacophore models
-
-
-- IMPORTANT: changed the hashing procedure to make it more stable (pickle dependency was removed). This breaks compatibility with previously generated md5 hashes with `get_signature_md5`, `iterate_pharm` and `iterate_pharm1` functions, all other functionality was not affected. 
-
-**1.0.1**
-- `fit_model` function can return rms by request
-
-**1.0.2**
-- `fit_model` function now returns a dict of mapped feature ids
-
-**1.0.3**
-- add `get_subpharmacophore` function
-- fix `get_mirror_pharmacophore` function to use the same bin step and cached args as for the source pharmacophore instance  
-
-**1.0.4**
-- fix installation of dependency `networkx`
-- add citations on examples of `pmapper` descriptors used for machine learning
-
-**1.1**
-- change SMARTS pattern to avoid matching positively charge nitrogen atoms as H-bond acceptors
-
-**1.1.1**
-- fix missing aromatic features when reading LigandScout models
-
-**1.1.2**
-- add treatment of exclusion volume features in LigandScout files
-
 ## Examples
 
 ### Load modules
@@ -248,6 +215,42 @@ To run the speed test use `pmapper_speed_test` command line tool
 
 ## Documentation
 More documentation can be found here - https://pmapper.readthedocs.io/en/latest/
+
+## Changelog
+**1.0.0**
+- added functionality to calculate 3D pharmacophore descriptors for molecules with exclusion of single atoms (for the purpose of model interpretation)
+- added convenience function get_feature_ids
+- added function add_feature to manually edit/construct a pharmacophore
+- added save/load of pharmit pharmacophore models
+
+
+- IMPORTANT: changed the hashing procedure to make it more stable (pickle dependency was removed). This breaks compatibility with previously generated md5 hashes with `get_signature_md5`, `iterate_pharm` and `iterate_pharm1` functions, all other functionality was not affected. 
+
+**1.0.1**
+- `fit_model` function can return rms by request
+
+**1.0.2**
+- `fit_model` function now returns a dict of mapped feature ids
+
+**1.0.3**
+- add `get_subpharmacophore` function
+- fix `get_mirror_pharmacophore` function to use the same bin step and cached args as for the source pharmacophore instance  
+
+**1.0.4**
+- fix installation of dependency `networkx`
+- add citations on examples of `pmapper` descriptors used for machine learning
+
+**1.1**
+- change SMARTS pattern to avoid matching positively charge nitrogen atoms as H-bond acceptors
+
+**1.1.1**
+- fix missing aromatic features when reading LigandScout models
+
+**1.1.2**
+- add treatment of exclusion volume features in LigandScout files
+
+**1.1.3**
+- add file format check for loading of xyz file
 
 ## Citation
 Ligand-Based Pharmacophore Modeling Using Novel 3D Pharmacophore Signatures  
